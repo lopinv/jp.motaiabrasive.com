@@ -1,0 +1,185 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Breadcrumbs from '../components/Breadcrumbs.astro';
+import CtaBand from '../components/CtaBand.astro';
+import FaqItem from '../components/FaqItem.astro';
+
+const breadcrumbs = [
+  { name: 'ホーム', href: '/' },
+  { name: '技術仕様', href: '/technical-specs' },
+];
+
+/*** FEPA P 砥粒表（客観的な国際標準） ***/
+const fepaGrades = [
+  { p: 'P40', range: '極粗', use: '粗材の速削り' },
+  { p: 'P60', range: '粗', use: '塗装・錆の除去' },
+  { p: 'P80', range: 'やや粗', use: '仕上げ前の面準備' },
+  { p: 'P100', range: '中', use: '板材の一次仕上げ' },
+  { p: 'P120', range: 'やや細', use: 'エッジの平滑化' },
+  { p: 'P150', range: '細', use: '均一仕上げ' },
+  { p: 'P180', range: '細', use: '塗装前準備' },
+  { p: 'P240', range: '極めて細', use: '一次超仕上げ' },
+  { p: 'P320', range: '精', use: '塗装層間の平滑化' },
+  { p: 'P400', range: '精', use: '一次研磨' },
+  { p: 'P600', range: '極めて精', use: '金属研磨' },
+  { p: 'P800', range: '超細', use: '金属超仕上げ' },
+  { p: 'P1000', range: '超', use: '塗装研磨' },
+  { p: 'P3000', range: '超', use: '高輝度最終研磨' },
+  { p: 'P5000', range: '超', use: '鏡面研磨' },
+];
+
+/*** 単位換算（客観的） ***/
+const unitConversions = [
+  { from: 'インチ', to: 'mm', ratio: '1インチ = 25.4mm' },
+  { from: '3インチ', to: '75mm', ratio: '3 × 25.4' },
+  { from: '4インチ', to: '100mm', ratio: '4 × 25.4' },
+  { from: '5インチ', to: '125mm', ratio: '5 × 25.4' },
+  { from: '6インチ', to: '150mm', ratio: '6 × 25.4' },
+];
+
+/*** 基材タイプ（業界の事実） ***/
+const backingTypes = [
+  { type: '紙', desc: '柔軟で軽く、平面と細いベルト向け。耐湿性は限定的。' },
+  { type: '布（綿/ポリエステル）', desc: '丈夫で柔軟、重厚なベルトと金属用途向け。耐熱性。' },
+  { type: 'ポリマー繊維', desc: '高耐久性、耐破断・耐水。重厚な工業用途に使用。' },
+  { type: 'オープンメッシュ', desc: '研削中の粉塵排出を可能にする。メッシュディスクに使用。' },
+];
+
+const grainTypes = [
+  { type: '酸化アルミニウム（Al₂O₃）', desc: '最も一般的。木材と一般金属向け。コストと性能のバランスが良い。' },
+  { type: 'ジルコニアアルミナ（ZrO₂）', desc: 'より硬く長寿命。硬金属と重削りに適する。' },
+  { type: 'セラミック', desc: '最高性能。セルフシャープニング砥粒。重厚な工業工程向け。' },
+  { type: '炭化ケイ素（SiC）', desc: '鋭く摩耗が速い。石材、ガラス、超仕上げ向け。' },
+];
+
+const specFaq = [
+  {
+    q: 'FEPA PとCAMIのグレードの違いは？',
+    a: 'FEPA Pは欧州/国際規格（世界中の大半でGCC含む採用）であり、CAMIは米国規格です。数値は完全に一致しません（例：P120 ≈ CAMI 120 だが P400 ≠ CAMI 400）。混同を避けるため、供給依頼にはFEPA Pの指定を推奨します。',
+  },
+  {
+    q: '被削材に適する砥粒タイプはどう決めますか？',
+    a: '木材・一般作業：酸化アルミニウム。硬金属・重削り：ジルコニア。高性能工業工程：セラミック。石材・ガラス・超仕上げ：炭化ケイ素。',
+  },
+  {
+    q: '用途に最も適した基材は？',
+    a: '平面と細いベルト：紙。重厚なベルトと金属：布。湿潤・重厚な環境：ポリマー繊維。粉塵吸引下での研削：オープンメッシュ。',
+  },
+];
+
+const faqJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: specFaq.map((item) => ({
+    '@type': 'Question',
+    name: item.q,
+    acceptedAnswer: { '@type': 'Answer', text: item.a },
+  })),
+};
+---
+
+<Layout
+  title="研磨材の技術仕様 | FEPA表・基材・砥粒 | 墨泰研磨材"
+  description="包括的な技術リファレンス：FEPA P全グレード表、砥粒タイプ（酸化アルミニウム/ジルコニア/セラミック/SiC）、基材タイプ、インチ/mm換算。国際産業基準に基づく客観データ。"
+  image="/images/grit-reference.png"
+  breadcrumbs={breadcrumbs}
+  jsonLd={[faqJsonLd]}
+>
+  <Breadcrumbs items={breadcrumbs} />
+
+  <section class="page-hero">
+    <div class="container page-hero__inner">
+      <span class="eyebrow eyebrow--light">技術リファレンス</span>
+      <h1>研磨材の技術仕様</h1>
+      <p>
+        FEPA Pグレード、砥粒・基材タイプ、単位換算のリファレンス表 —
+        見積依頼前に正確な仕様を構築できるよう整理。
+      </p>
+    </div>
+  </section>
+
+  <section class="section section--light">
+    <div class="container">
+
+      <div class="content-block">
+        <span class="eyebrow">砥粒グレード表</span>
+        <h2>FEPA Pグレードと用途</h2>
+        <p>
+          FEPA P（European Federation of Abrasives Producers）は、砥粒粗さの規格番号に
+          採用されている国際標準です。数値が大きいほど砥粒は細くなります。
+        </p>
+        <div class="table-wrap">
+          <table>
+            <caption>P40〜P5000の一般的なFEPA Pグレードリファレンス表</caption>
+            <thead>
+              <tr><th scope="col">グレード</th><th scope="col">粗さ</th><th scope="col">代表的用途</th></tr>
+            </thead>
+            <tbody>
+              {fepaGrades.map((g) => (
+                <tr><th scope="row" class="mono">{g.p}</th><td>{g.range}</td><td>{g.use}</td></tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+
+      <div class="content-block">
+        <span class="eyebrow">単位換算</span>
+        <h2>インチからmmへ</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th scope="col">直径（インチ）</th><th scope="col">直径（mm）</th><th scope="col">計算</th></tr></thead>
+            <tbody>
+              {unitConversions.map((u) => (
+                <tr><th scope="row">{u.from}</th><td class="mono">{u.to}</td><td>{u.ratio}</td></tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+
+      <div class="content-block">
+        <span class="eyebrow">砥粒タイプ</span>
+        <h2>研磨砥粒の4主要タイプ</h2>
+        <div class="knowledge-hub__grid">
+          {grainTypes.map((g) => (
+            <div class="sidebar-card">
+              <strong>{g.type}</strong>
+              <p>{g.desc}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+
+      <div class="content-block">
+        <span class="eyebrow">基材タイプ</span>
+        <h2>ベルト・ディスクの基材</h2>
+        <div class="knowledge-hub__grid">
+          {backingTypes.map((b) => (
+            <div class="sidebar-card">
+              <strong>{b.type}</strong>
+              <p>{b.desc}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <!-- FAQ -->
+      <div class="content-block">
+        <span class="eyebrow">よくある質問</span>
+        <h2>仕様に関する技術質問</h2>
+        <div class="faq-list">
+          {specFaq.map((item) => <FaqItem question={item.q} answer={item.a} />)}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <CtaBand
+    title="このリファレンスで仕様を特定"
+    text="上記の表からグレード、砥粒タイプ、基材を選択し、見積フォームで送信。正確な価格提示にします。"
+  />
+</Layout>

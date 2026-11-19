@@ -1,0 +1,205 @@
+---
+import { getCollection } from 'astro:content';
+import Layout from '../../layouts/Layout.astro';
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
+import CtaBand from '../../components/CtaBand.astro';
+import { SITE } from '../../data/site';
+
+const articles = (await getCollection('articles')).sort(
+  (a, b) => new Date(b.data.publishDate).getTime() - new Date(a.data.publishDate).getTime(),
+);
+
+/** カテゴリ slug → 日本語ラベル（表示レイヤーのマッピング、データは元スラッグを保持） */
+const categoryLabels: Record<string, string> = {
+  'product-comparison': '製品比較',
+  'multi-product-comparison': '複数製品比較',
+  'buying-guide': '購入ガイド',
+  'technical-guide': '技術ガイド',
+  'application-guide': '用途ガイド',
+  'process-tutorial': 'プロセス解説',
+  troubleshooting: 'トラブルシューティング',
+  'product-spec-detail': '仕様詳細',
+  'procurement-guide': '調達ガイド',
+  'wholesale-oem-guide': '卸売とOEM',
+  'industry-market': '業界市場',
+  'gcc-regional-sourcing': 'GCC地域ソーシング',
+  'faq-buyers-guide': '購入者FAQ',
+};
+
+/** 製品族 slug → 日本語名（site.ts の productCategories と整合） */
+const familyLabels: Record<string, string> = {
+  'abrasive-belts': '研磨ベルト',
+  'flap-discs': 'フラップディスク',
+  'sanding-discs': '研磨ディスク',
+  'hook-loop': 'フック&ループ',
+  'sanding-sponges': '研磨スポンジ',
+};
+
+const catLabel = (slug: string) => categoryLabels[slug] ?? slug;
+const famLabel = (slug?: string) => (slug ? familyLabels[slug] ?? slug : '');
+
+const categories = [...new Set(articles.map((a) => a.data.category))].sort();
+
+const breadcrumbs = [
+  { name: 'ホーム', href: '/' },
+  { name: '技術記事', href: '/articles' },
+];
+
+const collectionJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'CollectionPage',
+  name: '技術記事 | 墨泰研磨材',
+  description:
+    '研磨材の選定に関する日本語の技術記事ライブラリ：製品比較、購入ガイド、仕様、GCC向け調達ガイド。',
+  url: `${SITE.url}/articles`,
+  inLanguage: 'ja',
+  publisher: { '@id': `${SITE.url}/#organization` },
+  mainEntity: {
+    '@type': 'ItemList',
+    numberOfItems: articles.length,
+    itemListElement: articles.slice(0, 20).map((a, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      url: `${SITE.url}/articles/${a.id}`,
+      name: a.data.title,
+    })),
+  },
+};
+---
+
+<Layout
+  title="研磨材の技術記事 | 墨泰研磨材"
+  description="日本語の技術記事ライブラリ：研磨ベルトと研磨ディスクの比較、購入・調達ガイド、仕様と砥粒度、産業購入者向けの加工トラブルシューティング。"
+  image="/images/grit-reference.png"
+  breadcrumbs={breadcrumbs}
+  jsonLd={[collectionJsonLd]}
+>
+  <Breadcrumbs items={breadcrumbs} />
+
+  <section class="page-hero">
+    <div class="container page-hero__inner">
+      <span class="eyebrow eyebrow--light">ナレッジライブラリ</span>
+      <h1>研磨材の技術記事</h1>
+      <p>
+        {articles.length} 本の技術記事が砥粒選定、製品比較、購入・調達ガイド、
+        加工トラブルシューティングをカバー — 産業用研磨材の購入者向けに作成。
+      </p>
+    </div>
+  </section>
+
+  <section class="section section--light">
+    <div class="container">
+      <div class="articles-toolbar" data-articles-toolbar>
+        <label class="articles-search">
+          <span class="sr-only">記事を検索</span>
+          <svg aria-hidden="true" viewBox="0 0 20 20" width="16" height="16">
+            <path
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              d="M9 3.5a5.5 5.5 0 1 1 0 11 5.5 5.5 0 0 1 0-11Zm4 9 4 4"
+            ></path>
+          </svg>
+          <input
+            type="search"
+            data-articles-search
+            placeholder="タイトルまたはキーワードで検索…"
+            aria-label="記事を検索"
+          />
+        </label>
+        <div class="articles-filters" role="group" aria-label="カテゴリで絞り込み">
+          <button class="model-filter is-active" data-articles-filter="all" type="button">すべて</button>
+          {
+            categories.map((cat) => (
+              <button class="model-filter" data-articles-filter={cat} type="button">
+                {catLabel(cat)}
+              </button>
+            ))
+          }
+        </div>
+      </div>
+
+      <p class="articles-count" data-articles-count>{articles.length} 本の記事</p>
+
+      <div class="articles-grid" data-articles-grid>
+        {
+          articles.map((article) => (
+            <article class="article-card" data-article-card data-category={article.data.category}>
+              <a class="article-card__link" href={`/articles/${article.id}`}>
+                <div class="article-card__meta">
+                  <span class="article-card__tag">{catLabel(article.data.category)}</span>
+                  {article.data.productFamily && (
+                    <span class="article-card__fam">{famLabel(article.data.productFamily)}</span>
+                  )}
+                </div>
+                <h2>{article.data.title}</h2>
+                <p>{article.data.description}</p>
+                <span class="article-card__more">
+                  記事を読む
+                  <svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14">
+                    <path
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.8"
+                      stroke-linecap="round"
+                      d="M11 4l6 6-6 6M4 10h12"
+                    ></path>
+                  </svg>
+                </span>
+              </a>
+            </article>
+          ))
+        }
+      </div>
+
+      <p class="articles-empty" data-articles-empty hidden>
+        一致する記事がありません — 他のキーワードをお試しください、または絞り込みを解除してください。
+      </p>
+    </div>
+  </section>
+
+  <CtaBand
+    title="記事内で答えが見つかりませんか？"
+    text="技術質問と加工仕様をお送りください。被削材と機械に合う推奨をお返しします。"
+  />
+
+  <script>
+    // 記事一覧：即時検索 + カテゴリ絞り込み（/products のモデル閲覧と同パターン）
+    const toolbar = document.querySelector<HTMLElement>('[data-articles-toolbar]');
+    const grid = document.querySelector<HTMLElement>('[data-articles-grid]');
+    if (toolbar && grid) {
+      const search = toolbar.querySelector<HTMLInputElement>('[data-articles-search]');
+      const filters = Array.from(toolbar.querySelectorAll<HTMLButtonElement>('[data-articles-filter]'));
+      const count = document.querySelector<HTMLElement>('[data-articles-count]');
+      const empty = document.querySelector<HTMLElement>('[data-articles-empty]');
+      const cards = Array.from(grid.querySelectorAll<HTMLElement>('[data-article-card]'));
+
+      const apply = () => {
+        const q = (search?.value || '').trim().toLowerCase();
+        const active = filters.find((b) => b.classList.contains('is-active'));
+        const cat = active?.dataset.articlesFilter ?? 'all';
+        let shown = 0;
+        for (const card of cards) {
+          const text = (card.textContent || '').toLowerCase();
+          const matchCat = cat === 'all' || card.dataset.category === cat;
+          const matchQ = !q || text.includes(q);
+          const visible = matchCat && matchQ;
+          card.hidden = !visible;
+          if (visible) shown++;
+        }
+        if (count) count.textContent = shown + ' 本の記事';
+        if (empty) empty.hidden = shown > 0;
+      };
+
+      search?.addEventListener('input', apply);
+      filters.forEach((btn) =>
+        btn.addEventListener('click', () => {
+          filters.forEach((b) => b.classList.toggle('is-active', b === btn));
+          apply();
+        }),
+      );
+      apply();
+    }
+  </script>
+</Layout>

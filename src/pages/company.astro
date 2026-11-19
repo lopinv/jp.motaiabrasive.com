@@ -1,0 +1,96 @@
+---
+import Layout from '../layouts/Layout.astro';
+import CtaBand from '../components/CtaBand.astro';
+import LocationMap from '../components/LocationMap.astro';
+import { SITE, qualitySteps, companyFacts } from '../data/site';
+---
+
+<Layout
+  title="墨泰研磨材工場について | 中国工場直販 産業用工具サプライヤー"
+  description="中国湖北省の墨泰研磨材工場：研磨ベルト、研磨ディスク、研磨スポンジの直接サプライヤー。産業購入者向けに商業供給とOEM注文をサポート。"
+  image="/images/factory.jpg"
+>
+  <section class="page-hero page-hero--image">
+    <div class="container page-hero__inner">
+      <span class="eyebrow eyebrow--light">墨泰について</span>
+      <h1>湖北省製造拠点からの産業向け直接サプライヤー</h1>
+      <p>
+        産業購入者、輸入業者、卸売業者に対し、明確な仕様、直接コミュニケーション、
+        問い合わせから納品までの透明な準備ステップで対応します。
+      </p>
+    </div>
+  </section>
+
+  <section class="section section--light">
+    <div class="container">
+      <div class="story-grid">
+        <div class="story-grid__content">
+          <span class="eyebrow">会社概要</span>
+          <h2>商業関係は明確な仕様から始まる</h2>
+          <p>
+            すべてのお客様に同じ説明をすることはしません。被削材、加工方法、サイズ、数量を検討し、
+            必要な製品、仕様、サービスを決定します。
+          </p>
+        </div>
+        <div class="story-grid__media">
+          <img src="/images/workshop.jpg" alt="墨泰工場内の生産現場" width="720" height="520" loading="lazy" />
+        </div>
+      </div>
+
+      <div class="fact-grid">
+        {
+          companyFacts.map((fact) => (
+            <div class="fact-card"><strong>{fact.value}</strong><span>{fact.label}</span></div>
+          ))
+        }
+      </div>
+
+      <div class="company-values">
+        <div class="company-values__intro">
+          <span class="eyebrow">仕事の進め方</span>
+          <h2>すべての注文を管理する3原則</h2>
+          <p>目標は最速で製品を送ることではなく、繰り返し可能な仕様と信頼できる供給を達成することです。</p>
+        </div>
+        <div class="value-list">
+          <article><span>01</span><h3>仕様優先、取引は後</h3><p>サイズ、砥粒、基材、数量、包装を確定してから生産指示へ移行します。</p></article>
+          <article><span>02</span><h3>必要に応じたサンプル</h3><p>購入者は商業数量コミット前に自社ラインでサンプル試験が可能です。</p></article>
+          <article><span>03</span><h3>購買担当者と直接連絡</h3><p>問い合わせ後の進行を加速するため、購買チームと直接チャネルを維持します。</p></article>
+        </div>
+      </div>
+
+      <div class="content-block company-process">
+        <span class="eyebrow">実行プロセス</span>
+        <h2>問い合わせから納品までの5段階</h2>
+        <div class="process-cards">
+          {
+            qualitySteps.map((step, index) => (
+              <article class="process-card"><span class="process-card__number">{String(index + 1).padStart(2, '0')}</span><h3>{step.title}</h3><p>{step.text}</p></article>
+            ))
+          }
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section--band-3 company-contact-band">
+    <div class="container company-contact-band__grid">
+      <div>
+        <span class="eyebrow eyebrow--light">工場見学</span>
+        <h2>工場見学または訪問スケジュールの調整</h2>
+        <p>連絡担当との日程調整および必要データ確認後に、工場見学を手配可能です。</p>
+      </div>
+      <div class="company-contact-band__data">
+        <div><span>Email</span><a href={`mailto:${SITE.email}`} dir="ltr">{SITE.email}</a></div>
+        <div><span>電話 & WhatsApp</span><a href={`https://wa.me/${SITE.whatsapp}`} target="_blank" rel="noopener nofollow" dir="ltr">{SITE.phone}</a></div>
+        <div><span>住所</span><address>{SITE.addressAr}</address></div>
+      </div>
+    </div>
+  </section>
+
+  <LocationMap />
+
+  <CtaBand
+    title="墨泰を貴社サプライヤーとして検証を開始"
+    text="仕様またはサンプル要望をお送りください。必要な情報を明確にし、適切な商業ソリューションを提案します。"
+  />
+</Layout>

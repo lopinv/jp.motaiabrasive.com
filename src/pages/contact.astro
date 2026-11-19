@@ -1,0 +1,61 @@
+---
+import Layout from '../layouts/Layout.astro';
+import CtaBand from '../components/CtaBand.astro';
+import { SITE } from '../data/site';
+---
+
+<Layout
+  title="墨泰研磨材工場へのお問い合わせ | 見積依頼"
+  description="中国湖北省の墨泰研磨材チームにメールまたはWhatsAppで直接連絡、または問い合わせフォームで見積を依頼。"
+  image="/images/factory.jpg"
+>
+  <section class="page-hero page-hero--contact">
+    <div class="container page-hero__inner">
+      <span class="eyebrow eyebrow--light">お問い合わせ</span>
+      <h1>あなたに最適なチャネルで注文を開始</h1>
+      <p>
+        迅速な問い合わせにはWhatsAppをご利用ください。仕様、数量、見積が必要な案件には、
+        専用問い合わせフォームで全詳細を一度にお送りください。
+      </p>
+    </div>
+  </section>
+
+  <section class="section section--light">
+    <div class="container contact-layout">
+      <div class="contact-methods">
+        <article class="contact-card contact-card--primary">
+          <span class="eyebrow eyebrow--light">最速</span>
+          <h2>WhatsAppでチャット</h2>
+          <p>写真や製品コード、数量、納品先をお送りください。チャットで仕様を確認してから見積を送付します。</p>
+          <a class="button button--accent" href={`https://wa.me/${SITE.whatsapp}`} target="_blank" rel="noopener nofollow">WhatsAppを開く</a>
+        </article>
+        <article class="contact-card">
+          <span class="eyebrow">正式な連絡</span>
+          <h2>メール</h2>
+          <p>OEM案件、定期供給、ロゴファイル送付、仕様書送付に適しています。</p>
+          <a class="button button--outline" href={`mailto:${SITE.email}`} dir="ltr">{SITE.email}</a>
+        </article>
+        <article class="contact-card">
+          <span class="eyebrow">電話</span>
+          <h2>直接お電話</h2>
+          <p>詳細な商業協議や、日程確認後の工場見学手配にご利用ください。</p>
+          <a class="button button--outline" href={`tel:${SITE.phone.replace(/\s/g, '')}`} dir="ltr">{SITE.phone}</a>
+        </article>
+      </div>
+
+      <div class="contact-details">
+        <span class="eyebrow">工場情報</span>
+        <h2>墨泰研磨材</h2>
+        <dl class="spec-dl">
+          <div><dt>会社名</dt><dd dir="ltr">{SITE.legalName}</dd></div>
+          <div><dt>住所</dt><dd>{SITE.addressAr}</dd></div>
+          <div><dt>対応時間</dt><dd>月〜土、工場タイムゾーン準拠</dd></div>
+          <div><dt>言語</dt><dd>日本語、英語、中国語</dd></div>
+        </dl>
+        <p class="fine-print">実供給スケジュールの間で問い合わせを受け付けています。祝日の遅延を避けるため、WhatsAppで件名を添えてご連絡ください。</p>
+      </div>
+    </div>
+  </section>
+
+  <CtaBand title="見積依頼の準備はできましたか？" text="製品タイプ、サイズ、数量、納品先をご準備ください。残りの詳細は私たちと一緒に確定しましょう。" />
+</Layout>

@@ -1,0 +1,150 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
+import CtaBand from '../../components/CtaBand.astro';
+import FaqItem from '../../components/FaqItem.astro';
+import StickyQuote from '../../components/StickyQuote.astro';
+import RelatedArticles from '../../components/RelatedArticles.astro';
+import { industries, productCategories } from '../../data/site';
+
+export function getStaticPaths() {
+  return industries.map((industry) => ({ params: { slug: industry.slug }, props: { industry } }));
+}
+
+const { industry } = Astro.props;
+const recommended = productCategories.filter((product) => (industry.products as readonly string[]).includes(product.slug));
+const breadcrumbs = [
+  { name: 'ホーム', href: '/' },
+  { name: '業界', href: '/industries' },
+  { name: industry.name, href: `/industries/${industry.slug}` },
+];
+
+const faqJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: industry.faq.map((item) => ({
+    '@type': 'Question',
+    name: item.q,
+    acceptedAnswer: { '@type': 'Answer', text: item.a },
+  })),
+};
+---
+
+<Layout
+  title={`${industry.title} | 墨泰産業ソリューション`}
+  description={`墨泰の${industry.name}向け研磨ソリューション：加工課題、推奨製品、仕様選定手順、見積依頼に役立つ情報。`}
+  image={industry.image}
+  breadcrumbs={breadcrumbs}
+  jsonLd={[faqJsonLd]}
+>
+  <Breadcrumbs items={breadcrumbs} />
+
+  <section class="page-hero page-hero--image">
+    <div class="container page-hero__inner">
+      <span class="eyebrow eyebrow--light">{industry.name}業界ソリューション</span>
+      <h1>{industry.title}</h1>
+      <p>{industry.description}</p>
+    </div>
+  </section>
+
+  <section class="section section--light">
+    <div class="container solution-layout">
+      <div class="solution-main">
+        <div class="content-block">
+          <span class="eyebrow">加工課題</span>
+          <h2>この業界で研磨材の選定が難しい理由</h2>
+          <p>
+            最終製品の品質は、始点から超仕上げまでの研磨工程の均一性に依存します。
+            そのため、汎用工具を単に送るのではなく、加工課題を検討し、
+            適切な研磨材・工具形状・砥粒度を結びつけます。
+          </p>
+          <div class="challenge-list">
+            {
+              industry.challenges.map((challenge, index) => (
+                <div><span>0{index + 1}</span><p>{challenge}</p></div>
+              ))
+            }
+          </div>
+        </div>
+
+        <div class="content-block">
+          <span class="eyebrow">選定プラン</span>
+          <h2>最適な仕様はどう決めるか？</h2>
+          <ol class="selection-steps">
+            <li><strong>作業面を特定</strong><p>木材または金属のタイプ、表面状態、残材や加工欠陥を確認します。</p></li>
+            <li><strong>加工方法を検討</strong><p>機械タイプ、取付方式、圧力と送り速度を検討します。</p></li>
+            <li><strong>材質とグレードを選定</strong><p>除去工程または仕上げ工程に合う砥粒タイプとグレードを決定します。</p></li>
+            <li><strong>サンプルを試験</strong><p>商業数量を承認前にサンプルまたは仕様試験を実施できます。</p></li>
+          </ol>
+        </div>
+
+        <div class="content-block">
+          <span class="eyebrow">よくある質問</span>
+          <h2>{industry.name}加工に関する質問</h2>
+          <div class="faq-list">
+            {industry.faq.map((item) => <FaqItem question={item.q} answer={item.a} />)}
+          </div>
+        </div>
+      </div>
+
+      <aside class="solution-sidebar">
+        <StickyQuote application={industry.name} />
+        <div class="sidebar-card">
+          <h3>推奨製品</h3>
+          <ul class="sidebar-products">
+            {
+              recommended.map((product) => (
+                <li>
+                  <a href={`/products/${product.slug}`}>
+                    <img src={product.image} alt="" width="72" height="54" loading="lazy" />
+                    <span><strong>{product.name}</strong><small>仕様詳細 →</small></span>
+                  </a>
+                </li>
+              ))
+            }
+          </ul>
+        </div>
+        <div class="sidebar-card sidebar-card--soft">
+          <h3>見積依頼の前に</h3>
+          <p>被削材タイプ、機械、要求サイズ、数量、発送先をお送りください。</p>
+          <a class="text-link" href="/resources/abrasive-grit-guide">砥粒度選定ガイド <span>→</span></a>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <section class="section section--sand">
+    <div class="container">
+      <div class="section-heading section-heading--split">
+        <div>
+          <span class="eyebrow">他の業界ソリューション</span>
+          <h2>他の業界ソリューションを閲覧</h2>
+        </div>
+        <a class="button button--outline" href="/industries">すべてのソリューション</a>
+      </div>
+      <div class="related-grid">
+        {
+          industries
+            .filter((item) => item.slug !== industry.slug)
+            .map((item) => (
+              <a class="related-card" href={`/industries/${item.slug}`}>
+                <img src={item.image} alt="" width="320" height="220" loading="lazy" />
+                <div><h3>{item.name}</h3><p>{item.description}</p><span>ソリューションを見る →</span></div>
+              </a>
+            ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <section class="section section--alt">
+    <div class="container">
+      <RelatedArticles industry={industry.slug} />
+    </div>
+  </section>
+
+  <CtaBand
+    title={`${industry.name}向け研磨ソリューションを構築`}
+    text="課題のある加工箇所を説明してください。仕様を検討し、適切な材質と試験を提案します。"
+  />
+</Layout>

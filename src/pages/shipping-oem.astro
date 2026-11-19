@@ -1,0 +1,141 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Breadcrumbs from '../components/Breadcrumbs.astro';
+import CtaBand from '../components/CtaBand.astro';
+import FaqItem from '../components/FaqItem.astro';
+
+const breadcrumbs = [
+  { name: 'ホーム', href: '/' },
+  { name: '供給 & OEM', href: '/shipping-oem' },
+];
+
+const shippingSteps = [
+  { title: '仕様確認', text: '生産前に購入者と製品、サイズ、グレード、基材、数量、包装を確定。' },
+  { title: '生産と加工', text: '承認済み仕様に従い加工。サンプル承認後の生産期間目安：3〜5週間。' },
+  { title: '包装と準備', text: '工業用またはOEM包装。標準箱または合意によるカスタム。輸送文書はこの段階で準備。' },
+  { title: '海運/空輸', text: '日本向け海運：10〜20日。空輸は速いがコスト高。買い手の要求で当方が輸送を手配またはFOB対応。' },
+  { title: '通関', text: '輸入者が国内の輸入文書を提供（国により異なる）。当方は通関支援のためCOC・COAを提供。' },
+  { title: '納品', text: '合意商業条件（FOB/CIF/DDP）に基づき、港または倉庫へ納品。' },
+];
+
+const oemSteps = [
+  { title: 'ブランドファイル', text: '購入者がロゴファイル（ベクター/AI）、包装図面、ブランドカラーを送付。' },
+  { title: '実現性検討', text: '生産チームとOEM要件を検討し、MOQ、コスト、納期への影響を特定。' },
+  { title: 'サンプル承認', text: '要求ブランドでサンプルを生産し、量産前に購入者が承認。' },
+  { title: '量産', text: '承認後、承認済みブランドと包装で量産を開始。' },
+];
+
+const packagingOptions = [
+  { type: '工業用包装', desc: '卸売用の標準プラスチック箱または段ボール。商業・流通向け。' },
+  { type: 'OEM包装', desc: '購入者ロゴとカスタム印刷の箱。ブランドファイルとデザインが必要です。' },
+  { type: '耐湿包装', desc: '長距離海運の追加保護。長距離輸出に推奨。' },
+];
+
+const shippingFaq = [
+  {
+    q: '中国から日本への総供給期間は？',
+    a: '生産：仕様・サンプル承認から3〜5週間。海運：10〜20日。合計目安：5〜8週間。空輸は速い（3〜7日）がコストは大幅に高め。',
+  },
+  {
+    q: '適合証明書（COC）と分析証明（COA）は提供されますか？',
+    a: 'はい。製品仕様に合わせたCOC・COAを提供します。地域の認証（例：PSE関連、JIS適合等）は輸入国の輸入者責任ですが、通関支援文書の手配で協力します。',
+  },
+  {
+    q: 'どのインコタームズ（取引条件）が利用可能ですか？',
+    a: 'FOB（中国の港湾船上渡し）、CIF（価格＋保険＋運賃で目的港まで）、DDP（輸入者倉庫での関税込み納品）。物流パートナー経由の手配または、購入者指定の通関業者と連携します。',
+  },
+  {
+    q: 'OEM案件のMOQは？',
+    a: 'MOQは製品、カスタムタイプ、包装により仕様ごとに個別に決定されます。標準製品のMOQは低め、ロゴ・印刷包装のOEMは数量が高めです。正確な数値は見積で確認ください。',
+  },
+];
+
+const faqJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: shippingFaq.map((item) => ({
+    '@type': 'Question',
+    name: item.q,
+    acceptedAnswer: { '@type': 'Answer', text: item.a },
+  })),
+};
+---
+
+<Layout
+  title="中国から日本への供給 & OEM | 出荷段階と包装 | 墨泰研磨材"
+  description="完全な供給ガイド：中国から日本への上陸段階（FOB/CIF/DDP）、供給期間、包装・OEMオプション、COC/COA文書。産業用研磨材の購入者向けの実務情報。"
+  image="/images/factory.jpg"
+  breadcrumbs={breadcrumbs}
+  jsonLd={[faqJsonLd]}
+>
+  <Breadcrumbs items={breadcrumbs} />
+
+  <section class="page-hero">
+    <div class="container page-hero__inner">
+      <span class="eyebrow eyebrow--light">供給 & 製造</span>
+      <h1>中国から日本への供給 & OEM</h1>
+      <p>
+        仕様確認から納品まで：出荷段階、包装オプション、OEMフロー、
+        日本での通関支援文書。
+      </p>
+    </div>
+  </section>
+
+  <section class="section section--light">
+    <div class="container">
+      <!--  -->
+      <div class="content-block">
+        <span class="eyebrow">供給段階</span>
+        <h2>6ステップで仕様から納品まで</h2>
+        <ol class="numbered-list">
+          {shippingSteps.map((step) => (
+            <li><strong>{step.title}</strong><p>{step.text}</p></li>
+          ))}
+        </ol>
+      </div>
+
+      <!-- OEM  -->
+      <div class="content-block">
+        <span class="eyebrow">顧客ブランド製造</span>
+        <h2>4ステップのOEMフロー</h2>
+        <div class="process-cards">
+          {oemSteps.map((step, index) => (
+            <article class="process-card">
+              <span class="process-card__num">{String(index + 1).padStart(2, '0')}</span>
+              <h3>{step.title}</h3>
+              <p>{step.text}</p>
+            </article>
+          ))}
+        </div>
+      </div>
+
+      <!--  -->
+      <div class="content-block">
+        <span class="eyebrow">包装オプション</span>
+        <h2>対応可能な包装タイプ</h2>
+        <div class="knowledge-hub__grid">
+          {packagingOptions.map((p) => (
+            <div class="sidebar-card">
+              <strong>{p.type}</strong>
+              <p>{p.desc}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <!-- FAQ -->
+      <div class="content-block">
+        <span class="eyebrow">よくある質問</span>
+        <h2>供給・輸送に関する質問</h2>
+        <div class="faq-list">
+          {shippingFaq.map((item) => <FaqItem question={item.q} answer={item.a} />)}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <CtaBand
+    title="供給案件を開始する準備はできましたか？"
+    text="仕様、数量、納品先、希望取引条件をお送りください。検討のうえ、明確な商業見積でお返事します。"
+  />
+</Layout>

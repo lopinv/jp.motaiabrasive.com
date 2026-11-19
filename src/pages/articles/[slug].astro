@@ -1,0 +1,268 @@
+---
+import { getCollection, render } from 'astro:content';
+import Layout from '../../layouts/Layout.astro';
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
+import CtaBand from '../../components/CtaBand.astro';
+import FaqItem from '../../components/FaqItem.astro';
+import StickyQuote from '../../components/StickyQuote.astro';
+import { SITE, productCategories } from '../../data/site';
+import { models } from '../../data/models';
+
+export async function getStaticPaths() {
+  const articles = await getCollection('articles');
+  return articles.map((article) => ({ params: { slug: article.id }, props: { article } }));
+}
+
+const { article } = Astro.props;
+const { Content } = await render(article);
+
+/** 表示カテゴリ */
+const categoryLabels: Record<string, string> = {
+  'product-comparison': '製品比較',
+  'multi-product-comparison': '複数製品比較',
+  'buying-guide': '購入ガイド',
+  'technical-guide': '技術ガイド',
+  'application-guide': '用途ガイド',
+  'process-tutorial': 'プロセス解説',
+  troubleshooting: 'トラブルシューティング',
+  'product-spec-detail': '仕様詳細',
+  'procurement-guide': '調達ガイド',
+  'wholesale-oem-guide': '卸売とOEM',
+  'industry-market': '業界市場',
+  'gcc-regional-sourcing': 'GCC地域ソーシング',
+  'faq-buyers-guide': '購入者FAQ',
+};
+
+const breadcrumbs = [
+  { name: 'ホーム', href: '/' },
+  { name: '技術記事', href: '/articles' },
+  { name: article.data.title, href: `/articles/${article.id}` },
+];
+
+/** 関連製品：まず製品ファミリー、次に該当するモデル */
+const familyProduct = productCategories.find((p) => p.slug === article.data.productFamily);
+const familyModels = article.data.productFamily
+  ? models.filter((m) => m.categorySlug === article.data.productFamily).slice(0, 3)
+  : [];
+
+/** 関連記事：同じファミリーまたは同じ業界（現在の記事を除外） */
+const allArticles = await getCollection('articles');
+const relatedArticles = allArticles
+  .filter(
+    (a) =>
+      a.id !== article.id &&
+      (a.data.productFamily === article.data.productFamily ||
+        (a.data.industry && a.data.industry === article.data.industry)),
+  )
+  .slice(0, 3)
+  .map((a) => ({ id: a.id, title: a.data.title, description: a.data.description, category: a.data.category }));
+
+const articleJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Article',
+  headline: article.data.title,
+  description: article.data.description,
+  image: article.data.featuredImage,
+  inLanguage: 'ja',
+  author: { '@type': 'Organization', name: SITE.name, url: SITE.url },
+  publisher: { '@id': `${SITE.url}/#organization` },
+  mainEntityOfPage: { '@type': 'WebPage', '@id': `${SITE.url}/articles/${article.id}` },
+  datePublished: article.data.publishDate,
+  dateModified: article.data.updatedDate,
+  keywords: article.data.keywords?.join(', '),
+};
+
+const faqJsonLd =
+  article.data.faq.length > 0
+    ? {
+        '@context': 'https://schema.org',
+        '@type': 'FAQPage',
+        mainEntity: article.data.faq.map((item: { q: string; a: string }) => ({
+          '@type': 'Question',
+          name: item.q,
+          acceptedAnswer: { '@type': 'Answer', text: item.a },
+        })),
+      }
+    : null;
+
+const dateFmt = new Date(article.data.publishDate).toLocaleDateString('ja-JP', {
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric',
+});
+---
+
+<Layout
+  title={`${article.data.title} | 墨泰研磨材`}
+  description={article.data.description}
+  image={article.data.featuredImage}
+  type="article"
+  breadcrumbs={breadcrumbs}
+  jsonLd={[articleJsonLd, faqJsonLd].filter(Boolean) as Record<string, unknown>[]}
+>
+  <Breadcrumbs items={breadcrumbs} />
+
+  <section class="page-hero">
+    <div class="container page-hero__inner">
+      <span class="eyebrow eyebrow--light">{categoryLabels[article.data.category] ?? article.data.category}</span>
+      <h1>{article.data.title}</h1>
+      <p>{article.data.description}</p>
+      <div class="page-hero__meta">
+        <span>墨泰研磨材</span>
+        <span>·</span>
+        <span>{dateFmt}</span>
+      </div>
+    </div>
+  </section>
+
+  <div class="reading-progress" data-reading-progress aria-hidden="true"></div>
+
+  <section class="section section--light">
+    <div class="container article-layout">
+      <article class="article-main">
+        <div class="article-body">
+          <Content />
+        </div>
+
+        {
+          article.data.faq.length > 0 && (
+            <div class="content-block">
+              <span class="eyebrow">よくある質問</span>
+              <h2>注文前にオペレーターがよく尋ねる質問</h2>
+              <div class="faq-list">
+                {article.data.faq.map((item) => (
+                  <FaqItem question={item.q} answer={item.a} />
+                ))}
+              </div>
+            </div>
+          )
+        }
+
+        {
+          relatedArticles.length > 0 && (
+            <div class="content-block">
+              <span class="eyebrow">関連記事</span>
+              <h2>その他の記事</h2>
+              <div class="article-related-list">
+                {relatedArticles.map((rel) => (
+                  <a class="article-related-item" href={`/articles/${rel.id}`}>
+                    <span class="article-related-tag">{categoryLabels[rel.category] ?? rel.category}</span>
+                    <strong>{rel.title}</strong>
+                    <p>{rel.description.slice(0, 120)}…</p>
+                  </a>
+                ))}
+              </div>
+            </div>
+          )
+        }
+      </article>
+
+      <aside class="article-sidebar">
+        <nav class="sidebar-card article-toc" aria-label="記事の目次" data-article-toc hidden>
+          <h3>記事の目次</h3>
+          <ol data-toc-list></ol>
+        </nav>
+
+        {
+          familyProduct && (
+            <div class="sidebar-card">
+              <h3>関連製品</h3>
+              <ul class="plain-links">
+                <li>
+                  <a href={`/products/${familyProduct.slug}`}>{familyProduct.name} →</a>
+                </li>
+                {familyModels.map((m) => (
+                  <li>
+                    <a href={`/products/models/${m.slug}`}>{m.name} →</a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )
+        }
+
+        {
+          article.data.internalLinks.length > 0 && (
+            <div class="sidebar-card sidebar-card--soft">
+              <h3>関連リンク</h3>
+              <ul class="plain-links">
+                {article.data.internalLinks.map((link) => (
+                  <li>
+                    <a href={link.url}>{link.anchorText} →</a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )
+        }
+
+        <StickyQuote product={familyProduct?.name} />
+      </aside>
+    </div>
+  </section>
+
+  <CtaBand
+    title={article.data.cta?.text || '記事に載っていない質問がありますか？'}
+    text="加工仕様、数量、発送先をお送りください。1営業日以内に明確な見積でお返事します。"
+  />
+
+  <script>
+    // ページ上部の読了進捗バー
+    const bar = document.querySelector<HTMLElement>('[data-reading-progress]');
+    if (bar) {
+      const update = () => {
+        const doc = document.documentElement;
+        const max = doc.scrollHeight - doc.clientHeight;
+        bar.style.transform = max > 0 ? 'scaleX(' + (window.scrollY / max).toFixed(4) + ')' : 'scaleX(0)';
+      };
+      update();
+      window.addEventListener('scroll', update, { passive: true });
+      window.addEventListener('resize', update, { passive: true });
+    }
+
+    // 記事の目次（TOC）：表示後に本文の H2 見出しから構築
+    const tocNav = document.querySelector<HTMLElement>('[data-article-toc]');
+    const tocList = tocNav?.querySelector<HTMLOListElement>('[data-toc-list]');
+    const body = document.querySelector<HTMLElement>('.article-body');
+    if (tocNav && tocList && body) {
+      const slugify = (text: string) => {
+        const base = text
+          .replace(/<[^>]+>/g, '')
+          .replace(/\s+/g, ' ')
+          .trim()
+          .slice(0, 40);
+        let slug = '';
+        for (const ch of base) {
+          if (/[a-zA-Z0-9\u4e00-\u9fff\u3040-\u30ff]/.test(ch)) slug += ch;
+          else slug += '-';
+        }
+        return slug.replace(/-+/g, '-').replace(/^-|-$/g, '') || 'section';
+      };
+      const h2s = Array.from(body.querySelectorAll('h2'));
+      if (h2s.length > 2) {
+        h2s.forEach((h2) => {
+          h2.id = slugify(h2.textContent || '');
+        });
+        tocList.innerHTML = h2s
+          .map(
+            (h2) =>
+              '<li><a href="#' + h2.id + '">' + (h2.textContent || '').replace(/<[^>]+>/g, '') + '</a></li>',
+          )
+          .join('');
+        tocNav.hidden = false;
+
+        // 表示セクションのハイライト（scrollspy）
+        const links = Array.from(tocList.querySelectorAll('a'));
+        const spy = () => {
+          let current = -1;
+          h2s.forEach((h2, i) => {
+            if (h2.getBoundingClientRect().top < 120) current = i;
+          });
+          links.forEach((a, i) => a.classList.toggle('is-current', i === current));
+        };
+        spy();
+        window.addEventListener('scroll', spy, { passive: true });
+      }
+    }
+  </script>
+</Layout>

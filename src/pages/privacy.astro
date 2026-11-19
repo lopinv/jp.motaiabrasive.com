@@ -1,0 +1,83 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { SITE } from '../data/site';
+---
+
+<Layout
+  title="プライバシーポリシー | 墨泰研磨材"
+  description="墨泰研磨材のプライバシーポリシー：見積依頼時の収集データ、利用方法、依頼に関する連絡先情報。"
+  image="/images/workshop.jpg"
+>
+  <section class="page-hero page-hero--simple">
+    <div class="container page-hero__inner">
+      <span class="eyebrow eyebrow--light">法的情報</span>
+      <h1>プライバシーポリシー</h1>
+      <p>最終更新日：2026年11月16日</p>
+    </div>
+  </section>
+
+  <section class="section section--light">
+    <div class="container legal-layout">
+      <article class="legal-article">
+        <section>
+          <h2>1. はじめに</h2>
+          <p>
+            本ポリシーは、訪問者（特に見積依頼フォームの利用時）が送信するデータを
+            墨泰研磨材のサイトがどのように取り扱うかを説明します。
+          </p>
+        </section>
+        <section>
+          <h2>2. 収集するデータ</h2>
+          <p>問い合わせフォームを送信する場合、以下のデータを収集する場合があります：</p>
+          <ul class="check-list">
+            <li>氏名、会社名、Email。</li>
+            <li>電話番号またはWhatsApp、国。</li>
+            <li>製品タイプ、仕様、数量、発送先。</li>
+            <li>備考の内容と希望する連絡方法。</li>
+          </ul>
+        </section>
+        <section>
+          <h2>3. データの利用</h2>
+          <p>データは問い合わせへの回答、仕様の準備、見積の作成、サンプルまたは供給に関する連絡に使用します。データを売買することはなく、個別の同意なくマーケティング目的で利用することはありません。</p>
+        </section>
+        <section>
+          <h2>4. サービスプロバイダー</h2>
+          <p>
+            フォームはホスト型のフォームサービスを通じて送信されます。フォームに入力した内容のみが
+            このサービスに転送され、その処理はサービス側のポリシーに準拠します。WhatsAppまたはEmailを使用する場合、
+            処理はサービスプロバイダーのポリシーに従います。
+          </p>
+        </section>
+        <section>
+          <h2>5. 保存期間</h2>
+          <p>問い合わせデータは、回答と潜在的商业関係の管理に必要な期間、会計上の義務および適用される法的保存期間に基づいて保持します。</p>
+        </section>
+        <section>
+          <h2>6. 貴方の権利</h2>
+          <p>法的条件が当てはまる場合、ご自身のデータの参照、修正、削除を請求できます。以下のEmailまでご連絡いただき、ご要望を明確にご指定ください。</p>
+        </section>
+        <section>
+          <h2>7. ポリシーの更新</h2>
+          <p>データ収集方法またはフォームの利用方法が変更された場合、本ポリシーを更新する可能性があります。最終更新日はページの上部に表示されます。</p>
+        </section>
+      </article>
+      <aside class="legal-sidebar">
+        <div class="sidebar-card">
+          <h3>連絡先情報</h3>
+          <dl class="spec-dl">
+            <div><dt>会社名</dt><dd>{SITE.legalName}</dd></div>
+            <div><dt>Email</dt><dd><a href={`mailto:${SITE.email}`} dir="ltr">{SITE.email}</a></dd></div>
+            <div><dt>電話とWhatsApp</dt><dd>
+              <a href={`https://wa.me/${SITE.whatsapp}`} target="_blank" rel="noopener nofollow" dir="ltr">{SITE.phone}</a>
+            </dd></div>
+            <div><dt>所在地</dt><dd><address>{SITE.addressAr}</address></dd></div>
+          </dl>
+        </div>
+        <div class="sidebar-card sidebar-card--soft">
+          <h3>実務上の注意</h3>
+          <p>フォームには、銀行情報、パスワード、回答に必要でない機微な個人情報をお送りにならないでください。</p>
+        </div>
+      </aside>
+    </div>
+  </section>
+</Layout>

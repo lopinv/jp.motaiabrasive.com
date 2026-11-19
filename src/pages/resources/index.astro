@@ -1,0 +1,69 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import CtaBand from '../../components/CtaBand.astro';
+import { resources } from '../../data/site';
+---
+
+<Layout
+  title="技術リソースと研磨材調達ガイド | 墨泰研磨材"
+  description="砥粒グレード選定とOEM・包装準備に関する実践ガイド。産業用研磨材の購入者が、見積依頼前に正確な仕様を構築できるよう支援する技術リソース。"
+  image="/images/grit-reference.png"
+>
+  <section class="page-hero page-hero--resources">
+    <div class="container page-hero__inner">
+      <span class="eyebrow eyebrow--light">リソースセンター</span>
+      <h1>より良い依頼の準備を支援する技術知識</h1>
+      <p>
+        購買チームとオペレーター向けの実践ガイド：仕様の準備、選択肢の比較、
+        問い合わせを明確な見積に変えるために必要な情報の解説。
+      </p>
+    </div>
+  </section>
+
+  <section class="section section--light">
+    <div class="container">
+      <div class="resource-grid">
+        {
+          resources.map((resource) => (
+            <article class="resource-card">
+              <a class="resource-card__media" href={`/resources/${resource.slug}`}>
+                <img src={resource.image} alt="" width="520" height="340" loading="lazy" />
+                <span>{resource.type}</span>
+              </a>
+              <div class="resource-card__body">
+                <h2><a href={`/resources/${resource.slug}`}>{resource.title}</a></h2>
+                <p>{resource.description}</p>
+                <ul class="resource-card__topics">
+                  {resource.sections.map((section) => <li>{section.title}</li>)}
+                </ul>
+                <a class="text-link" href={`/resources/${resource.slug}`}>ガイドを読む <span>→</span></a>
+              </div>
+            </article>
+          ))
+        }
+      </div>
+
+      <div class="knowledge-hub">
+        <div class="knowledge-hub__intro">
+          <span class="eyebrow">ナレッジハブ</span>
+          <h2>情報から、購入可能な仕様へ</h2>
+          <p>
+            問い合わせはこの順番で整理してください：製品の特定、次に加工方法、最後に数量と納品先。
+            これらの情報があると、見積の比較がより速く明確になります。
+          </p>
+        </div>
+        <div class="knowledge-hub__grid">
+          <a href="/products/abrasive-belts"><strong>ベルト参照</strong><span>サイズと取付方式 →</span></a>
+          <a href="/products/flap-discs"><strong>ディスク参照</strong><span>直径と基材 →</span></a>
+          <a href="/industries"><strong>業界参照</strong><span>用途別の推奨 →</span></a>
+          <a href="/quality"><strong>検査参照</strong><span>ロット確認ポイント →</span></a>
+          <a href="/technical-specs"><strong>技術仕様</strong><span>FEPA表と基材 →</span></a>
+          <a href="/shipping-oem"><strong>供給とOEM</strong><span>出荷と包装の段階 →</span></a>
+          <a href="/articles"><strong>技術記事</strong><span>{`ナレッジライブラリ →`}</span></a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <CtaBand title="ガイドを見積に変えて" text="準備した仕様をお送りください。確認のうえ、適切な詳細でお返しします。" />
+</Layout>

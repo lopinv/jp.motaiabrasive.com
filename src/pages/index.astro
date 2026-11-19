@@ -1,0 +1,417 @@
+---
+import Layout from '../layouts/Layout.astro';
+import WhatsAppButton from '../components/WhatsAppButton.astro';
+import CtaBand from '../components/CtaBand.astro';
+import LocationMap from '../components/LocationMap.astro';
+import FaqItem from '../components/FaqItem.astro';
+import { productCategoryLines, applicationScenes, companyFacts, qualitySteps } from '../data/site';
+
+const homeFaq = [
+  {
+    q: '墨泰に見積を依頼するには？',
+    a: '製品タイプ、サイズ、数量、納品先をフォームで送信するか、直接WhatsAppでご連絡ください。仕様を確認し、適切な商業見積でお返事します。',
+  },
+  {
+    q: '自社ブランド製品の供給は可能ですか？',
+    a: '可能です。OEMは仕様確認段階で評価できます。ロゴファイル、包装情報、納品先をお送りいただければ、実現性とコストを生産前に確認します。',
+  },
+  {
+    q: '注文前にサンプルを送ってもらえますか？',
+    a: '製品タイプと商業合意により可能です。サンプル費用と送料は要望確認後に決定します。',
+  },
+  {
+    q: 'より速い見積のために必要な情報は？',
+    a: '製品タイプ、サイズまたは直径、砥粒度または材質、取付タイプ、数量、納品先、想定注文頻度。',
+  },
+];
+
+const heroSpecs = [
+  { label: '工場', value: '湖北省、中国' },
+  { label: '専門', value: '産業用研磨材' },
+  { label: '注文サービス', value: 'OEM / ODM' },
+  { label: '最小ロット', value: '仕様による' },
+];
+
+const spotlight = [
+  { value: '533–2200', label: 'mm · ベルトサイズ', note: '4サイズ標準在庫' },
+  { value: '40–5000', label: '砥粒度範囲', note: '超仕上げグレードまで' },
+  { value: '4', label: 'ディスク直径', note: '3, 4, 5, 6インチ' },
+  { value: '5', label: '製品グループ', note: 'ベルト、フラップ、研磨、フック&ループ、スポンジ' },
+];
+---
+
+<Layout
+  title="墨泰研磨材 | 中国工場直販 産業用研磨ベルト・ディスク"
+  description="中国湖北省の墨泰工場：研磨ベルト（533–2200 mm）、フラップディスク、研磨ディスク、研磨スポンジを直接供給。認証済み仕様、OEM注文、卸売数量で産業輸入業者に対応。"
+  image="/images/factory.jpg"
+>
+  <Fragment slot="head">
+    <!-- パフォーマンス: LCP要素（ヒーロー背景画像）を早期プリロード -->
+    <link rel="preload" as="image" href="/images/factory.jpg" fetchpriority="high" />
+  </Fragment>
+
+  <section class="hero">
+    <div class="hero__bg" aria-hidden="true">
+      <img src="/images/factory.jpg" alt="" width="1920" height="1080" fetchpriority="high" />
+    </div>
+    <div class="hero__veil" aria-hidden="true"></div>
+
+    <div class="container hero__grid">
+      <div class="hero__main">
+        <div class="hero__eyebrow">
+          <span class="hero__flag">HUBEI · CN</span>
+          <span class="hero__divider" aria-hidden="true"></span>
+          <span>工場直販 · 産業向け供給</span>
+        </div>
+
+        <h1>
+          産業用研磨材
+          <span class="hero__hl">あなたのラインに合わせて仕様生産</span>
+        </h1>
+
+        <p class="hero__lead">
+          4サイズの研磨ベルト（533〜2200 mm）、フラップディスク、研磨ディスク、研磨スポンジ。
+          砥粒、基材、取付タイプを貴社チームと確定してから生産へ移行し、
+          OEM注文と卸売で輸入業者に供給します。
+        </p>
+
+        <div class="hero__cta">
+          <a class="button button--accent button--lg" href="/quote">
+            見積依頼
+            <span aria-hidden="true">→</span>
+          </a>
+          <WhatsAppButton />
+          <a class="button button--ghost button--lg" href="/products">サイズ一覧を見る</a>
+        </div>
+
+        <dl class="hero__specs">
+          {
+            heroSpecs.map((item) => (
+              <div>
+                <dt>{item.label}</dt>
+                <dd>{item.value}</dd>
+              </div>
+            ))
+          }
+        </dl>
+      </div>
+
+      <aside class="hero__panel" aria-label="能力サマリー">
+        <div class="hero__panel-head">
+          <span>工場タグ</span>
+          <span class="hero__panel-status"><i aria-hidden="true"></i> 受注可能</span>
+        </div>
+        <dl class="hero__panel-body">
+          {
+            companyFacts.map((fact) => (
+              <div>
+                <dt>{fact.label}</dt>
+                <dd>{fact.value}</dd>
+              </div>
+            ))
+          }
+        </dl>
+        <div class="hero__panel-foot">
+          <a href="/quality">品質管理メカニズム →</a>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <section class="spec-strip" data-reveal aria-label="工場能力数値">
+    <div class="container spec-strip__grid">
+      {
+        spotlight.map((item) => (
+          <div class="spec-strip__item">
+            <strong>{item.value}</strong>
+            <span>{item.label}</span>
+            <small>{item.note}</small>
+          </div>
+        ))
+      }
+    </div>
+  </section>
+
+  <section class="section section--alt" data-reveal>
+    <div class="container">
+      <div class="section-heading section-heading--bar">
+        <div>
+          <span class="eyebrow">製品</span>
+          <h2>製品カテゴリー</h2>
+          <p>認証済み仕様の4消費グループ、工場から輸入業者、商社、自社ブランドへ直接供給。</p>
+        </div>
+        <a class="button button--outline button--sm" href="/products">
+          すべての製品
+          <span aria-hidden="true">↗</span>
+        </a>
+      </div>
+
+      <div class="cat-grid">
+        {
+          productCategoryLines.map((line) => (
+            <article class="cat-card">
+              <a class="cat-card__media" href={line.href} aria-label={line.name}>
+                <img src={line.image} alt={line.name} width="600" height="450" loading="lazy" />
+              </a>
+              <div class="cat-card__body">
+                <span class="eyebrow cat-card__no" aria-hidden="true">{line.no}</span>
+                <h3>{line.name}</h3>
+                <p class="cat-desc">{line.description}</p>
+                <div class="cat-card__actions">
+                  <WhatsAppButton compact product={line.name} />
+                  <a class="button button--accent button--sm" href={`/quote?product=${line.slug}`}>
+                    <svg aria-hidden="true" viewBox="0 0 24 24" width="16" height="16">
+                      <path
+                        fill="currentColor"
+                        d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4-8 5 8 5V8z"
+                      ></path>
+                    </svg>
+                    見積依頼
+                  </a>
+                </div>
+              </div>
+            </article>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <section class="section" data-reveal>
+    <div class="container capability">
+      <div class="capability__media">
+        <img src="/images/factory.jpg" alt="中国湖北省墨泰研磨材工場" width="900" height="600" loading="lazy" />
+        <div class="capability__stamp">
+          <strong>墨泰工場</strong>
+          <span>直接供給</span>
+        </div>
+      </div>
+
+      <div class="capability__content">
+        <span class="eyebrow">私たちの仕事の進め方</span>
+        <h2>仕様を先に固め、それから生産へ</h2>
+        <p>
+          タイプ、サイズ、砥粒、基材、取付タイプを確定するまで加工を開始しません。
+          これにより照合エラーを減らし、各ロットをトレース可能かつ検証可能にします。
+        </p>
+
+        <ol class="process">
+          {
+            qualitySteps.map((step, index) => (
+              <li>
+                <span class="process__num">{String(index + 1).padStart(2, '0')}</span>
+                <div>
+                  <strong>{step.title}</strong>
+                  <p>{step.text}</p>
+                </div>
+              </li>
+            ))
+          }
+        </ol>
+
+        <a class="button button--primary" href="/quality">検査メカニズム詳細</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section--alt scenes-section" data-reveal data-scenes-carousel>
+    <div class="container">
+      <div class="scenes__head">
+        <h2>次の仕上げ工程のために設計されています。</h2>
+        <div class="scenes__controls">
+          <span class="scenes__position" aria-hidden="true">1 / {applicationScenes.length}</span>
+          <button type="button" data-scenes-prev aria-label="前のシーン">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6" /></svg>
+          </button>
+          <button type="button" data-scenes-next aria-label="次のシーン">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 6 6 6-6 6" /></svg>
+          </button>
+          <button
+            type="button"
+            data-scenes-pause
+            aria-pressed="false"
+            data-pause-label="自動再生を一時停止"
+            data-play-label="自動再生を再開"
+            aria-label="自動再生を一時停止"
+          >
+            <svg class="scenes__pause-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5v14M15 5v14" /></svg>
+            <svg class="scenes__play-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l12-7.5Z" /></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="container scenes__viewport">
+      <div class="scenes__track" tabindex="0" role="group" aria-label="アプリケーションシーン">
+        {
+          applicationScenes.map((scene) => (
+            <a class="scenes__card" href={scene.href} aria-label={`${scene.title}`}>
+              <img src={scene.image} alt={scene.title} width="800" height="450" loading="lazy" />
+              <span>
+                {scene.title}
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10" /></svg>
+              </span>
+            </a>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <section class="section" data-reveal>
+    <div class="container">
+      <div class="section-heading section-heading--center">
+        <span class="eyebrow eyebrow--plain">注文プロセス</span>
+        <h2>最初の問い合わせからロット納品まで</h2>
+        <p>各段階が具体的な問いに答え、商業やり取りの推測を減らします。</p>
+      </div>
+
+      <div class="process-cards">
+        {
+          qualitySteps.map((step, index) => (
+            <article class="process-card">
+              <span class="process-card__num">{String(index + 1).padStart(2, '0')}</span>
+              <h3>{step.title}</h3>
+              <p>{step.text}</p>
+            </article>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <section class="section section--alt">
+    <div class="container faq-layout">
+      <div class="faq-layout__intro">
+        <span class="eyebrow">よくある質問</span>
+        <h2>資材購入者への直接回答</h2>
+        <p>
+          回答が見つからない場合は、用途タイプをお知らせください。見積を加速するために必要な仕様リストをお送りします。
+        </p>
+        <a class="button button--outline" href="/contact">チームに連絡</a>
+      </div>
+      <div class="faq-list">
+        {homeFaq.map((item) => <FaqItem question={item.q} answer={item.a} />)}
+      </div>
+    </div>
+  </section>
+
+  <LocationMap />
+
+  <CtaBand
+    title="あなたの仕様をお送りください。供給可能な選択肢でお返事します"
+    text="製品タイプ、サイズ、数量、納品先を共有してください。要望を確認し、見積送付前に最適な仕様を提案します。"
+  />
+
+  <script
+    type="application/ld+json"
+    set:html={JSON.stringify({
+      '@context': 'schema.org',
+      '@type': 'FAQPage',
+      mainEntity: homeFaq.map((item) => ({
+        '@type': 'Question',
+        name: item.q,
+        acceptedAnswer: { '@type': 'Answer', text: item.a },
+      })),
+    })}
+  ></script>
+
+  <script>
+    // アプリケーションシーン：水平カルーセル自動再生（ロジック：6秒自動、スクロール/操作/フォーカス喪失で一時停止）
+    document.querySelectorAll('[data-scenes-carousel]').forEach((root) => {
+      const track = root.querySelector('.scenes__track') as HTMLElement;
+      if (!track) return;
+      const cards = Array.prototype.slice.call(track.children);
+      const prev = root.querySelector<HTMLButtonElement>('[data-scenes-prev]');
+      const next = root.querySelector<HTMLButtonElement>('[data-scenes-next]');
+      const pause = root.querySelector<HTMLButtonElement>('[data-scenes-pause]');
+      const position = root.querySelector<HTMLElement>('.scenes__position');
+      const motion = matchMedia('(prefers-reduced-motion: reduce)');
+      let index = 0;
+      let paused = motion.matches;
+      let hover = false;
+      let focused = false;
+      let visible = false;
+      let timer: ReturnType<typeof setInterval> | undefined;
+
+      // 停止点（トラック先頭と最後のカード間の水平位置）
+      function stops() {
+        const step = (cards[1] && cards[1].offsetLeft - cards[0].offsetLeft) || track.clientWidth;
+        const max = Math.max(0, track.scrollWidth - track.clientWidth);
+        const points = [];
+        for (let x = 0; x < max - 2; x += step) points.push(x);
+        points.push(max);
+        return points;
+      }
+
+      function update() {
+        const points = stops();
+        index = points.reduce(
+          (best, p, i) => (Math.abs(p - track.scrollLeft) < Math.abs(points[best] - track.scrollLeft) ? i : best),
+          0
+        );
+        const bounds = track.getBoundingClientRect();
+        const shown = cards
+          .map((card, i) => ({ rect: card.getBoundingClientRect(), i }))
+          .filter((s) => {
+            const overlap = Math.min(s.rect.right, bounds.right) - Math.max(s.rect.left, bounds.left);
+            return overlap > Math.min(s.rect.width, bounds.width) * 0.5;
+          });
+        const first = (shown[0] && shown[0].i) || index;
+        const last = (shown[shown.length - 1] && shown[shown.length - 1].i) || index;
+        if (position) {
+          position.textContent = (first === last ? String(first + 1) : first + 1 + '–' + (last + 1)) + ' / ' + cards.length;
+        }
+      }
+
+      function move(delta: number) {
+        const points = stops();
+        index = (index + delta + points.length) % points.length;
+        track.scrollTo({ left: points[index], behavior: motion.matches ? 'instant' : 'smooth' });
+      }
+
+      function schedule() {
+        clearInterval(timer);
+        if (!paused && !hover && !focused && visible && !document.hidden) {
+          timer = setInterval(() => move(1), 6000);
+        }
+      }
+
+      function paint() {
+        if (pause) {
+          pause.setAttribute('aria-pressed', String(paused));
+          pause.setAttribute('aria-label', paused ? pause.dataset.playLabel ?? '' : pause.dataset.pauseLabel ?? '');
+        }
+        schedule();
+      }
+
+      prev && prev.addEventListener('click', () => { move(-1); schedule(); });
+      next && next.addEventListener('click', () => { move(1); schedule(); });
+      pause && pause.addEventListener('click', () => { paused = !paused; paint(); });
+      track.addEventListener('scroll', () => requestAnimationFrame(update), { passive: true });
+      track.addEventListener('keydown', (e: Event) => {
+        const key = (e as KeyboardEvent).key;
+        if (e.target === track && (key === 'ArrowLeft' || key === 'ArrowRight')) {
+          (e as KeyboardEvent).preventDefault();
+          move(key === 'ArrowRight' ? 1 : -1);
+          schedule();
+        }
+      });
+      root.addEventListener('mouseenter', () => { hover = true; schedule(); });
+      root.addEventListener('mouseleave', () => { hover = false; schedule(); });
+      root.addEventListener('focusin', () => { focused = true; schedule(); });
+      root.addEventListener('focusout', (e: Event) => {
+        focused = !root.contains((e as FocusEvent).relatedTarget as Node | null);
+        schedule();
+      });
+      track.addEventListener('pointerdown', () => { if (timer !== undefined) clearInterval(timer); }, { passive: true });
+      track.addEventListener('pointerup', schedule, { passive: true });
+      document.addEventListener('visibilitychange', schedule);
+      motion.addEventListener('change', () => { paused = motion.matches; paint(); });
+      new IntersectionObserver((entries) => { visible = entries[0].isIntersecting; schedule(); }, { threshold: 0.3 }).observe(root);
+      new ResizeObserver(update).observe(track);
+      update();
+      paint();
+    });
+  </script>
+</Layout>

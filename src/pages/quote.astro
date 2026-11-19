@@ -1,0 +1,456 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Breadcrumbs from '../components/Breadcrumbs.astro';
+import { SITE, productCategories } from '../data/site';
+import { models } from '../data/models';
+
+const breadcrumbs = [
+  { name: 'ホーム', href: '/' },
+  { name: '見積依頼', href: '/quote' },
+];
+
+const selectedProduct = Astro.url.searchParams.get('product') ?? '';
+const selectedModel = models.find((model) => model.slug === selectedProduct);
+const initialCategory = selectedModel?.categorySlug ?? '';
+
+const steps = [
+  { id: 'product', title: '製品', hint: '必要な製品は？' },
+  { id: 'spec', title: '仕様', hint: 'サイズと数量' },
+  { id: 'delivery', title: '供給', hint: '納品先と頻度' },
+  { id: 'contact', title: '連絡先', hint: '見積と回答のため' },
+];
+---
+
+<Layout
+  title="研磨材の見積依頼 | 墨泰工場"
+  description="墨泰への見積依頼は4ステップ：製品を選択、仕様と数量を特定、納品先と頻度を記入、連絡先を残す。1営業日以内に明確な見積でお返事。"
+  image="/images/factory.jpg"
+>
+  <Breadcrumbs items={breadcrumbs} />
+
+  <div class="quote-funnel">
+    <header class="funnel__head">
+      <div class="container">
+        <div class="funnel__intro">
+          <span class="eyebrow eyebrow--light">見積依頼 · 4ステップ</span>
+          <h1>必要な内容をお知らせください。明確な見積でお返事します</h1>
+          <p>
+            各ステップは簡潔に設計されています。各ステップの必須項目を記入し、
+            該当しないものは空欄のままにしてください — 仕様を検討し、必要に応じて
+            質問したうえで、見積をお返事します。
+          </p>
+        </div>
+
+        <ol class="funnel__progress" data-funnel-progress>
+          {
+            steps.map((step, index) => (
+              <li class:list={{ 'is-active': index === 0 }} data-step={index}>
+                <span class="funnel__progress-num">{String(index + 1).padStart(2, '0')}</span>
+                <span class="funnel__progress-text">
+                  <strong>{step.title}</strong>
+                  <small>{step.hint}</small>
+                </span>
+                {index < steps.length - 1 && <span class="funnel__progress-bar" aria-hidden="true"></span>}
+              </li>
+            ))
+          }
+        </ol>
+      </div>
+    </header>
+
+    <div class="container funnel__body">
+      <form
+        class="funnel-form"
+        action="https://form.lopins.cn/lopinx@duck.com/ad7aa0dd52e0afa55f85f7b2"
+        method="POST"
+        data-funnel-form
+      >
+        <input type="hidden" name="_subject" value="見積依頼 - MoTai Abrasives" />
+        <input type="hidden" name="_template" value="table" />
+        <input type="hidden" name="_captcha" value="false" />
+        <input type="hidden" name="_next" value="/thankyou" />
+        <input type="text" name="_honey" class="honeypot" tabindex="-1" autocomplete="off" aria-hidden="true" />
+
+
+        <section class="funnel-step" data-panel="0" aria-labelledby="step-title-0">
+          <div class="funnel-step__head">
+            <span class="funnel-step__num">01</span>
+            <div>
+              <h2 id="step-title-0">どの製品グループが必要ですか？</h2>
+              <p>用途に合うグループを選択し、既知の場合はサイズを特定してください。</p>
+            </div>
+          </div>
+
+          <div class="quickpick quickpick--4" role="radiogroup" aria-label="製品グループ" data-quickpick="category">
+            {
+              productCategories.map((product) => (
+                <label class:list={['quickpick__item']} data-choice>
+                  <input
+                    type="radio"
+                    name="product_category"
+                    value={product.name}
+                    required
+                    checked={initialCategory === product.slug}
+                  />
+                  <span class="quickpick__item-label">
+                    <strong>{product.name}</strong>
+                    <small>{product.applications.slice(0, 2).join(' · ')}</small>
+                  </span>
+                </label>
+              ))
+            }
+          </div>
+
+          <label class="field field--full">
+            <span>具体的なサイズ（既知の場合）</span>
+            <select name="model_slug" data-model-select>
+              <option value="">未定 — 後で仕様を記入します</option>
+              {
+                models.map((model) => (
+                  <option value={model.name} selected={model.slug === selectedProduct}>
+                    {model.name} — {model.sizeLabel}
+                  </option>
+                ))
+              }
+            </select>
+          </label>
+        </section>
+
+
+        <section class="funnel-step" data-panel="1" aria-labelledby="step-title-1" hidden>
+          <div class="funnel-step__head">
+            <span class="funnel-step__num">02</span>
+            <div>
+              <h2 id="step-title-1">砥粒度と数量はどのくらいですか？</h2>
+              <p>要求に最も近い砥粒度を選択してください — 生産前に正確なグレードを確認します。</p>
+            </div>
+          </div>
+
+          <div class="quickpick quickpick--4" role="radiogroup" aria-label="砥粒グレード" data-quickpick="grit">
+            <label class="quickpick__item">
+              <input type="radio" name="grit" value="粗目 (36-80)" required />
+              <span class="quickpick__item-label">
+                <strong>粗目 36–80</strong>
+                <small>酸化物・塗装の速削り</small>
+              </span>
+            </label>
+            <label class="quickpick__item">
+              <input type="radio" name="grit" value="中目 (100-180)" />
+              <span class="quickpick__item-label">
+                <strong>中目 100–180</strong>
+                <small>一般研削と厚み除去</small>
+              </span>
+            </label>
+            <label class="quickpick__item">
+              <input type="radio" name="grit" value="細目 (220-400)" />
+              <span class="quickpick__item-label">
+                <strong>細目 220–400</strong>
+                <small>仕上げと塗装前準備</small>
+              </span>
+            </label>
+            <label class="quickpick__item">
+              <input type="radio" name="grit" value="超細目 (500+)" />
+              <span class="quickpick__item-label">
+                <strong>超細目 500–5000</strong>
+                <small>超仕上げと研磨</small>
+              </span>
+            </label>
+          </div>
+
+          <div class="funnel-fields">
+            <label class="field">
+              <span>必要数量 *</span>
+              <input name="quantity" type="text" required placeholder="例: 5,000本 / 100箱" />
+            </label>
+
+            <label class="field">
+              <span>OEMまたは特殊包装は必要ですか？</span>
+              <select name="oem">
+                <option value="不要">不要、標準供給で</option>
+                <option value="必要、自社ブランド">必要、自社ブランド</option>
+                <option value="検討中">検討中</option>
+              </select>
+            </label>
+
+            <label class="field field--full">
+              <span>被削材と要求される仕上げ結果 *</span>
+              <textarea name="application" rows="3" required placeholder="被削材（木材、アルミ、鋼）と要求結果（錆除去、光沢、塗装前）を記述。"></textarea>
+            </label>
+
+            <label class="field field--full">
+              <span>機械と取付方式</span>
+              <input name="machine" type="text" placeholder="機械タイプ、ジョイント方式または取付システム" />
+            </label>
+          </div>
+        </section>
+
+
+        <section class="funnel-step" data-panel="2" aria-labelledby="step-title-2" hidden>
+          <div class="funnel-step__head">
+            <span class="funnel-step__num">03</span>
+            <div>
+              <h2 id="step-title-2">どこへ、どの頻度で納品しますか？</h2>
+              <p>納品先と注文頻度が見積内の輸送計画と供給条件を決定します。</p>
+            </div>
+          </div>
+
+          <div class="funnel-fields">
+            <label class="field">
+              <span>納品先国 *</span>
+              <select name="destination" data-destination-select required>
+                <option value="" disabled selected>国を選択</option>
+                <option>日本</option>
+                <option>韓国</option>
+                <option>中国</option>
+                <option>ベトナム</option>
+                <option>タイ</option>
+                <option>インドネシア</option>
+                <option>マレーシア</option>
+                <option>フィリピン</option>
+                <option>シンガポール</option>
+                <option>インド</option>
+                <option>サウジアラビア</option>
+                <option>アラブ首長国連邦</option>
+                <option>カタール</option>
+                <option>クウェート</option>
+                <option>バーレーン</option>
+                <option>オマーン</option>
+                <option>エジプト</option>
+                <option>南アフリカ</option>
+                <option>ブラジル</option>
+                <option>メキシコ</option>
+                <option>その他の国</option>
+              </select>
+            </label>
+
+            <label class="field">
+              <span>想定注文頻度</span>
+              <select name="frequency">
+                <option value="試注 / サンプル">試注 / サンプル</option>
+                <option value="一度限り">一度限り</option>
+                <option value="月次定期供給">月次定期供給</option>
+                <option value="四半期定期供給">四半期定期供給</option>
+              </select>
+            </label>
+
+            <label class="field field--full">
+              <span>備考：納品、検査条件、または特別な要求</span>
+              <textarea name="notes" rows="3" placeholder="例: 各ロットに適合証明が必要、45日以内納品。"></textarea>
+            </label>
+          </div>
+        </section>
+
+
+        <section class="funnel-step" data-panel="3" aria-labelledby="step-title-3" hidden>
+          <div class="funnel-step__head">
+            <span class="funnel-step__num">04</span>
+            <div>
+              <h2 id="step-title-3">どのようにご連絡いただけますか？</h2>
+              <p>選択したチャネルに見積をお送りします。データは他の目的には使用しません。</p>
+            </div>
+          </div>
+
+          <div class="funnel-fields">
+            <label class="field">
+              <span>氏名 *</span>
+              <input name="name" type="text" required autocomplete="name" placeholder="お名前" />
+            </label>
+
+            <label class="field">
+              <span>会社名 *</span>
+              <input name="company" type="text" required autocomplete="organization" placeholder="会社名" />
+            </label>
+
+            <label class="field">
+              <span>Email *</span>
+              <input name="email" type="email" required autocomplete="email" placeholder="name@company.com" dir="ltr" />
+            </label>
+
+            <label class="field">
+              <span>WhatsApp / 電話 *</span>
+              <input name="phone" type="tel" required autocomplete="tel" placeholder="国番号付き" dir="ltr" />
+            </label>
+          </div>
+
+          <div class="quickpick quickpick--3" role="radiogroup" aria-label="優先連絡言語" data-quickpick="lang">
+            <label class="quickpick__item">
+              <input type="radio" name="preferred_contact" value="WhatsApp / 日本語" checked />
+              <span class="quickpick__item-label">
+                <strong>WhatsApp — 日本語</strong>
+                <small>チャットで最速回答</small>
+              </span>
+            </label>
+            <label class="quickpick__item">
+              <input type="radio" name="preferred_contact" value="Email" />
+              <span class="quickpick__item-label">
+                <strong>Email</strong>
+                <small>ファイル・詳細向きの連絡</small>
+              </span>
+            </label>
+            <label class="quickpick__item">
+              <input type="radio" name="preferred_contact" value="電話 / English" />
+              <span class="quickpick__item-label">
+                <strong>電話 — English</strong>
+                <small>直接電話の場合</small>
+              </span>
+            </label>
+          </div>
+
+          <label class="funnel-consent">
+            <input name="consent" type="checkbox" required />
+            <span>このデータを使用して依頼への回答に使っていただくことに同意します。<a href="/privacy">プライバシーポリシー</a>に従います。</span>
+          </label>
+
+          <label class="field field--full" data-return-url-field>
+            <span>送信後に戻りたいページURL（任意）</span>
+            <input name="return_url" type="url" placeholder="https://ar.motaiabrasive.com/products/flap-discs" dir="ltr" />
+            <small class="fine-print">空欄の場合はサンキューページへ、同ドメインのリンクを記入すると直接そのページへ戻れます。</small>
+          </label>
+        </section>
+
+
+        <div class="funnel-actions">
+          <button class="button button--outline" type="button" data-funnel-prev disabled>前へ</button>
+          <span class="funnel-actions__hint" data-funnel-hint>ステップ 1 / 4</span>
+          <div class="funnel-actions__next">
+            <button class="button button--primary" type="button" data-funnel-next>次へ</button>
+            <button class="button button--accent" type="submit" data-funnel-submit hidden>
+              見積依頼を送信
+            </button>
+          </div>
+        </div>
+
+        <div class="funnel-status" data-funnel-status role="status" aria-live="polite"></div>
+      </form>
+
+
+      <aside class="funnel-aside">
+        <div class="funnel-card">
+          <h2 class="funnel-card__title">より速いチャネルが欲しいですか？</h2>
+          <p>WhatsAppまたはEmailで直接送信、フォームは不要です。</p>
+          <a class="button button--whatsapp button--block" href={`https://wa.me/${SITE.whatsapp}`} target="_blank" rel="noopener nofollow">
+            WhatsAppで直接連絡
+          </a>
+          <a class="button button--outline button--block" href={`mailto:${SITE.email}`} dir="ltr">{SITE.email}</a>
+        </div>
+
+        <div class="funnel-card funnel-card--soft">
+          <h2 class="funnel-card__title">送信後どうなりますか？</h2>
+          <ol class="funnel-pipeline">
+            <li><strong>一次検討</strong><span>仕様の完全性を確認し、簡潔な技術質問をする場合があります。</span></li>
+            <li><strong>商業見積</strong><span>価格、MOQ、包装・供給条件。</span></li>
+            <li><strong>サンプル / 提示</strong><span>サンプルまたは証明が必要な場合、フロー内で手配します。</span></li>
+          </ol>
+          <p class="fine-print">
+            送信完了後は<a href="/thankyou">確認ページ</a>へ移動します
+            — 最終ステップの任意フィールドにページURLを記入すると、そのページへ直接戻れます。
+          </p>
+        </div>
+
+        <div class="funnel-card funnel-card--meta">
+          <h2 class="funnel-card__title">参考情報</h2>
+          <dl class="spec-dl">
+            <div><dt>回答</dt><dd>1営業日以内</dd></div>
+            <div><dt>工場</dt><dd dir="ltr">中国湖北省咸寧市</dd></div>
+            <div><dt>言語</dt><dd dir="ltr">日本語 · EN · 中国語</dd></div>
+          </dl>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <script>
+    const form = document.querySelector('[data-funnel-form]');
+    const steps = form ? [...form.querySelectorAll<HTMLElement>('[data-panel]')] : [];
+    const progressItems = form ? [...form.querySelectorAll<HTMLElement>('[data-step]')] : [];
+    const prevBtn = form?.querySelector<HTMLButtonElement>('[data-funnel-prev]');
+    const nextBtn = form?.querySelector<HTMLButtonElement>('[data-funnel-next]');
+    const submitBtn = form?.querySelector<HTMLButtonElement>('[data-funnel-submit]');
+    const hint = form?.querySelector<HTMLElement>('[data-funnel-hint]');
+    const status = form?.querySelector<HTMLElement>('[data-funnel-status]');
+    let current = 0;
+
+    const render = () => {
+      steps.forEach((section, index) => {
+        section.hidden = index !== current;
+      });
+
+      progressItems.forEach((item, index) => {
+        item.classList.toggle('is-active', index === current);
+        item.classList.toggle('is-done', index < current);
+      });
+
+      if (prevBtn) prevBtn.disabled = current === 0;
+      if (hint) hint.textContent = `ステップ ${current + 1} / ${steps.length}`;
+      if (nextBtn) nextBtn.hidden = current === steps.length - 1;
+      if (submitBtn) submitBtn.hidden = current !== steps.length - 1;
+    };
+
+    const validForCurrent = () => {
+      const section = steps[current];
+      if (!section) return true;
+      const inputs = section.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(
+        'input:not([type="hidden"]):not(.honeypot), select, textarea'
+      );
+
+      for (const input of inputs) {
+        if (input.type === 'radio') {
+          const group = section.querySelectorAll<HTMLInputElement>(`input[name="${input.name}"]`);
+          const anyChecked = [...group].some((item) => item.checked);
+          if (!anyChecked) return false;
+        } else if (input.required && !input.reportValidity()) {
+          return false;
+        }
+      }
+
+      return true;
+    };
+
+    nextBtn?.addEventListener('click', () => {
+      if (!validForCurrent()) {
+        (form as HTMLFormElement)?.reportValidity?.();
+        return;
+      }
+
+      current = Math.min(current + 1, steps.length - 1);
+      render();
+      form?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+
+    prevBtn?.addEventListener('click', () => {
+      current = Math.max(current - 1, 0);
+      render();
+    });
+
+    const returnUrl = form?.querySelector<HTMLInputElement>('[name="return_url"]');
+    const nextField = form?.querySelector<HTMLInputElement>('[name="_next"]');
+
+    form?.addEventListener('submit', (event) => {
+      if (!(form as HTMLFormElement).checkValidity()) {
+        event.preventDefault();
+        (form as HTMLFormElement).reportValidity();
+        return;
+      }
+
+      // 送信後：既定 /thankyou；同ドメインの return_url がある場合 /thankyou?from=<ソース>（オープンリダイレクト防止のため同ドメインチェック）
+      if (returnUrl && nextField) {
+        const raw = returnUrl.value.trim();
+        if (raw) {
+          try {
+            const u = new URL(raw, location.origin);
+            const target = u.pathname + u.search;
+            if (u.origin === location.origin && target !== '/') {
+              nextField.value = `/thankyou?from=${encodeURIComponent(target)}`;
+            }
+          } catch {
+            /* 無効なURL → 既定の /thankyou を維持 */
+          }
+        }
+      }
+
+      if (status) status.textContent = '送信しています…';
+    });
+
+    render();
+  </script>
+</Layout>

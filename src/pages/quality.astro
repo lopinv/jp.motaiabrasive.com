@@ -1,0 +1,111 @@
+---
+import Layout from '../layouts/Layout.astro';
+import CtaBand from '../components/CtaBand.astro';
+import FaqItem from '../components/FaqItem.astro';
+import { qualitySteps } from '../data/site';
+
+const qualityFaq = [
+  {
+    q: '出荷前に何を検査しますか？',
+    a: '購入者と合意した仕様に基づき、製品構造、サイズ、砥粒タイプ、取付方式、包装を照合。詳細チェックリストは製品と注文により異なります。',
+  },
+  {
+    q: '独自の検査基準を適用できますか？',
+    a: '可能です。仕様確認段階で検査要件を検討し、プロセスで適用可能な項目を生産指示前に明確化します。',
+  },
+  {
+    q: '検査レポートや証明書は提供されますか？',
+    a: '各仕様と注文で利用可能な文書を明確化できます。未検証の証明書や主張を機能として言及することはなく、特別な要件は注文検討時に確認します。',
+  },
+  {
+    q: 'サンプル照合プロセスはどうなっていますか？',
+    a: '承認済み仕様でサンプルを送付し、購入者の運転結果と検査所見を記録してから最終数量を決定します。',
+  },
+];
+
+const faqJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: qualityFaq.map((item) => ({
+    '@type': 'Question',
+    name: item.q,
+    acceptedAnswer: { '@type': 'Answer', text: item.a },
+  })),
+};
+---
+
+<Layout
+  title="研磨材の品質保証と検査 | 墨泰研磨材"
+  description="墨泰研磨材の品質管理段階：仕様確認、サンプル検査、加工、検査と梱包、購入者との納品照合プロセス。"
+  image="/images/converting.jpg"
+  jsonLd={[faqJsonLd]}
+>
+  <section class="page-hero page-hero--image">
+    <div class="container page-hero__inner">
+      <span class="eyebrow eyebrow--light">品質保証</span>
+      <h1>品質は仕様から始まり、最終段階だけではありません</h1>
+      <p>
+        購入者と要件を確認し、サンプルを保管、ロット梱包前に製品を検査。
+        この方法で各ロットの適合性を理解可能かつトレース可能にします。
+      </p>
+    </div>
+  </section>
+
+  <section class="section section--light">
+    <div class="container">
+      <div class="quality-intro">
+        <div>
+          <span class="eyebrow">検査方法</span>
+          <h2>注文から納品までをカバーする5つの管理ポイント</h2>
+          <p>
+            購入者に複雑な管理システムを提供するのではなく、
+            よくあるエラーを防ぐ実践的なチェックポイントに集中します：サイズ違い、取付不適合、砥粒や包装の誤り。
+          </p>
+        </div>
+        <div class="quality-intro__aside">
+          <strong>重要な注意</strong>
+          <p>
+            未公表の認証や証明を機能として言及しません。購入者が要求する規制要件や証明については、
+            妥当性を確認し見積で明確化します。
+          </p>
+        </div>
+      </div>
+
+      <div class="quality-steps">
+        {
+          qualitySteps.map((step, index) => (
+            <article class="quality-step">
+              <span class="quality-step__number">{String(index + 1).padStart(2, '0')}</span>
+              <div><h2>{step.title}</h2><p>{step.text}</p></div>
+              <div class="quality-step__check"><span>検査</span></div>
+            </article>
+          ))
+        }
+      </div>
+
+      <div class="content-block checklist-block">
+        <span class="eyebrow">注文承認前チェックリスト</span>
+        <h2>照合エラーを減らす情報</h2>
+        <div class="checklist-grid">
+          <div><strong>製品特定</strong><ul class="check-list"><li>名称とタイプ</li><li>サイズまたは直径</li><li>砥粒度と材質</li></ul></div>
+          <div><strong>運転条件</strong><ul class="check-list"><li>機械タイプ</li><li>取付方式</li><li>被削材</li></ul></div>
+          <div><strong>供給条件</strong><ul class="check-list"><li>数量</li><li>包装とブランド</li><li>納品先と納期</li></ul></div>
+          <div><strong>検査要件</strong><ul class="check-list"><li>サンプル要否</li><li>合格基準</li><li>ロット文書</li></ul></div>
+        </div>
+      </div>
+
+      <div class="content-block">
+        <span class="eyebrow">よくある質問</span>
+        <h2>品質と照合に関する質問</h2>
+        <div class="faq-list">
+          {qualityFaq.map((item) => <FaqItem question={item.q} answer={item.a} />)}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <CtaBand
+    title="プロジェクトに適した検査仕様をご依頼ください"
+    text="ロット、サンプル、包装の要件をお知らせください。注文承認段階に組み込みます。"
+  />
+</Layout>

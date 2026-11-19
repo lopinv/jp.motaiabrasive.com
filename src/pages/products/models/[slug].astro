@@ -1,0 +1,216 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import Breadcrumbs from '../../../components/Breadcrumbs.astro';
+import CtaBand from '../../../components/CtaBand.astro';
+import FaqItem from '../../../components/FaqItem.astro';
+import StickyQuote from '../../../components/StickyQuote.astro';
+import RelatedArticles from '../../../components/RelatedArticles.astro';
+import { models } from '../../../data/models';
+import { productCategories } from '../../../data/site';
+
+export function getStaticPaths() {
+  return models.map((model) => ({ params: { slug: model.slug }, props: { model } }));
+}
+
+const { model } = Astro.props;
+const category = productCategories.find((item) => item.slug === model.categorySlug)!;
+const siblings = models.filter((item) => item.categorySlug === model.categorySlug && item.slug !== model.slug);
+const breadcrumbs = [
+  { name: 'ホーム', href: '/' },
+  { name: '製品', href: '/products' },
+  { name: category.name, href: `/products/${category.slug}` },
+  { name: model.sizeLabel, href: `/products/models/${model.slug}` },
+];
+
+const productJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Product',
+  name: model.name,
+  description: model.summary,
+  image: new URL(model.image, Astro.site).href,
+  sku: model.slug.toUpperCase(),
+  brand: { '@type': 'Brand', name: 'MoTai Abrasives' },
+  category: model.family,
+  additionalProperty: [
+    { '@type': 'PropertyValue', name: 'サイズ', value: model.sizeAr },
+    { '@type': 'PropertyValue', name: '砥粒度', value: model.gritRange.join('、') },
+    { '@type': 'PropertyValue', name: '基材タイプ', value: model.backing },
+    { '@type': 'PropertyValue', name: '取付方式', value: model.attachment },
+  ],
+};
+
+const faqJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: model.faq.map((item) => ({
+    '@type': 'Question',
+    name: item.q,
+    acceptedAnswer: { '@type': 'Answer', text: item.a },
+  })),
+};
+---
+
+<Layout
+  title={`${model.name} | 墨泰研磨材`}
+  description={`墨泰の${model.name}：${model.gritRange.length}級の砥粒対応、明確な仕様、研磨材の卸売。ご自身のサイズとグレードで見積を依頼。`}
+  image={model.image}
+  type="product"
+  breadcrumbs={breadcrumbs}
+  jsonLd={[productJsonLd, faqJsonLd]}
+>
+  <Breadcrumbs items={breadcrumbs} />
+
+  <section class="product-hero">
+    <div class="container product-hero__grid">
+      <div class="product-hero__content">
+        <span class="eyebrow">{model.family} · 墨泰</span>
+        <h1>{model.name}</h1>
+        <p>{model.summary}</p>
+        <ul class="hero__trust">
+          <li>{model.gritRange.length} 級の砥粒</li>
+          <li>生産前に仕様確認</li>
+          <li>卸売対応</li>
+        </ul>
+        <div class="hero__actions">
+          <a class="button button--accent" href={`/quote?product=${model.slug}`}>見積依頼</a>
+          <a class="button button--ghost" href="#grit">砥粒度を見る</a>
+        </div>
+      </div>
+      <figure class="product-hero__media">
+        <img src={model.image} alt={model.imageAlt} width="680" height="510" />
+        <figcaption>最小ロットと商業条件は見積内で確認。</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="section section--light product-overview">
+    <div class="container product-overview__grid">
+      <div class="product-overview__main">
+        <div class="content-block">
+          <span class="eyebrow">このサイズはいつ適していますか？</span>
+          <h2>明確なサイズ、仕上げサイクルをカバーする砥粒在庫</h2>
+          <p>
+            {model.summary} 適切なサイズの選択は、機械タイプと取付方式の照合から始まり、
+            次に被削材の特性と要求される仕上げ結果に基づいてグレードを決定します。
+          </p>
+          <ul class="check-list check-list--large">
+            <li>サイズ：<strong>{model.sizeAr}</strong></li>
+            <li>基材タイプ：{model.backing}</li>
+            <li>取付方式：{model.attachment}</li>
+          </ul>
+        </div>
+
+        <div class="content-block" id="grit">
+          <span class="eyebrow">砥粒度</span>
+          <h2>あなたの段階に合うグレードは？</h2>
+          <p>
+            このサイズで利用可能な {model.gritRange.length} 級を表示します。正確な選択は
+            被削材、圧力、送り速度に依存するため、数量承認前にサンプルを送付します（必要に応じて）。
+          </p>
+          <ul class="grit-grid" aria-label="利用可能な砥粒級">
+            {model.gritRange.map((grit) => <li>{grit}</li>)}
+          </ul>
+          <div class="table-wrap">
+            <table>
+              <caption>{model.name}の参考仕様サマリー。最終仕様は購入者と確認します。</caption>
+              <thead><tr><th>項目</th><th>説明</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">サイズ</th><td>{model.sizeAr}</td></tr>
+                <tr><th scope="row">砥粒級</th><td>{model.gritRange.join('、')}</td></tr>
+                <tr><th scope="row">基材タイプ</th><td>{model.backing}</td></tr>
+                <tr><th scope="row">取付方式</th><td>{model.attachment}</td></tr>
+                <tr><th scope="row">製品グループ</th><td>{model.family}</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="fine-print">
+            価格はグレード、数量、包装、発送先に依存します。詳細仕様とコストは見積でお送りします。
+          </p>
+        </div>
+
+        <div class="content-block">
+          <span class="eyebrow">考慮すべき点</span>
+          <h2>供給成功を決める3つのポイント</h2>
+          <ol class="selection-steps">
+            {model.notes.map((note) => <li><p>{note}</p></li>)}
+          </ol>
+        </div>
+
+        <div class="content-block">
+          <span class="eyebrow">よくある質問</span>
+          <h2>{model.name}に関する質問</h2>
+          <div class="faq-list">
+            {model.faq.map((item) => <FaqItem question={item.q} answer={item.a} />)}
+          </div>
+        </div>
+      </div>
+
+      <aside class="product-sidebar">
+        <StickyQuote product={model.name} />
+        <div class="sidebar-card">
+          <h3>注文に役立つ情報</h3>
+          <ul class="check-list">
+            <li>サイズ：{model.sizeAr}</li>
+            <li>要求グレード</li>
+            <li>数量と再注文頻度</li>
+            <li>発送先</li>
+          </ul>
+          <a class="text-link" href="/resources/abrasive-grit-guide">砥粒ガイドを見る <span>→</span></a>
+        </div>
+        {
+          siblings.length > 0 && (
+            <div class="sidebar-card sidebar-card--soft">
+              <h3>同じグループの他のサイズ</h3>
+              <ul class="plain-links">
+                {siblings.map((item) => (
+                  <li><a href={`/products/models/${item.slug}`}>{item.name} →</a></li>
+                ))}
+              </ul>
+            </div>
+          )
+        }
+      </aside>
+    </div>
+  </section>
+
+  <section class="section section--sand">
+    <div class="container">
+      <div class="section-heading section-heading--split">
+        <div>
+          <span class="eyebrow">購入の文脈</span>
+          <h2>注文承認前にサイズを比較</h2>
+        </div>
+        <a class="button button--outline" href={`/products/${category.slug}`}>{category.name}のページ</a>
+      </div>
+      <div class="related-grid">
+        <a class="related-card" href={`/products/${category.slug}`}>
+          <img src={category.image} alt="" width="320" height="220" loading="lazy" />
+          <div>
+            <h3>{category.name}</h3>
+            <p>{category.description}</p>
+            <span>グループカタログを見る →</span>
+          </div>
+        </a>
+        <a class="related-card" href="/resources/abrasive-grit-guide">
+          <img src="/images/grit-reference.png" alt="" width="320" height="220" loading="lazy" />
+          <div><h3>砥粒グレード選定ガイド</h3><p>グレードと基本仕上げ作業を関連付けた参照表。</p><span>ガイドを読む →</span></div>
+        </a>
+        <a class="related-card" href="/quality">
+          <img src="/images/converting.jpg" alt="" width="320" height="220" loading="lazy" />
+          <div><h3>品質保証</h3><p>生産指示前の仕様確認とサンプル検査の段階。</p><span>検査について →</span></div>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section--alt">
+    <div class="container">
+      <RelatedArticles productFamily={model.categorySlug} />
+    </div>
+  </section>
+
+  <CtaBand
+    title={`${model.name}の見積依頼`}
+    text="サイズ、グレード、数量、発送先をお送りください。仕様を検討し、明確な商業見積を用意します。"
+  />
+</Layout>

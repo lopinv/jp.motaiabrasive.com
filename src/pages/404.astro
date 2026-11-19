@@ -1,0 +1,67 @@
+---
+import Layout from '../layouts/Layout.astro';
+import CtaBand from '../components/CtaBand.astro';
+import { productCategories } from '../data/site';
+---
+
+<Layout
+  title="ページが見つかりません | 墨泰研磨材"
+  description="ご指定のページは存在しません。製品カタログに戻る、産業ソリューションを探す、または直接墨泰に見積を依頼してください。"
+  noindex
+>
+  <section class="page-hero page-hero--simple">
+    <div class="container page-hero__inner">
+      <span class="eyebrow eyebrow--light">404エラー</span>
+      <h1>ページが見つかりません</h1>
+      <p>
+        ページが移動したか、リンクが正しくありません。下のショートカットから製品カタログまたは
+        直接見積依頼へお進みください。
+      </p>
+    </div>
+  </section>
+
+  <section class="section section--light">
+    <div class="container">
+      <div class="section-heading section-heading--center">
+        <span class="eyebrow">クイックアクセス</span>
+        <h2>どこへ行きますか？</h2>
+      </div>
+
+      <div class="catalog-grid">
+        {
+          productCategories.map((product) => (
+            <article class="catalog-card">
+              <div class="catalog-card__media">
+                <img src={product.image} alt={`${product.name} by 墨泰研磨材`} width="560" height="420" loading="lazy" />
+              </div>
+              <div class="catalog-card__body">
+                <h2><a href={`/products/${product.slug}`}>{product.name}</a></h2>
+                <p>{product.description}</p>
+                <a class="button button--outline button--small" href={`/products/${product.slug}`}>
+                  仕様全文を見る
+                </a>
+              </div>
+            </article>
+          ))
+        }
+      </div>
+
+      <div class="catalog-guide">
+        <div>
+          <span class="eyebrow">お探しのものが見つかりませんか？</span>
+          <h2>仕様をお送りください。ご案内します</h2>
+          <p>
+            製品タイプ、サイズ、数量、発送先をお知らせください。要望を確認し、
+            貴社の運用に最適な仕様を提案します。
+          </p>
+        </div>
+        <div class="catalog-guide__actions">
+          <a class="button button--primary" href="/quote">見積依頼</a>
+          <a class="button button--outline" href="/contact">お問い合わせ</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <CtaBand title="目的地へご案内します" text="WhatsAppで直接ご連絡ください。適切な製品や仕様へご誘導します。" />
+</Layout>

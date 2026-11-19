@@ -1,0 +1,103 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Breadcrumbs from '../components/Breadcrumbs.astro';
+import { SITE } from '../data/site';
+
+const breadcrumbs = [
+  { name: 'ホーム', href: '/' },
+  { name: '依頼の確認', href: '/thankyou' },
+];
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'WebPage',
+  name: '依頼の確認 — 墨泰',
+  description:
+    '見積依頼を受け付けました。墨泰のチームが仕様を検討し、選択されたチャネルで1営業日以内に回答します。',
+};
+---
+
+<Layout
+  title="依頼の確認 — 墨泰研磨材"
+  description="見積依頼を受け付けました。墨泰のチームが仕様を検討し、選択されたチャネル（WhatsApp、メールまたは電話）で1営業日以内に回答します。"
+  image="/images/factory.jpg"
+  jsonLd={[jsonLd]}
+>
+  <Breadcrumbs items={breadcrumbs} />
+
+  <section class="section thankyou">
+    <div class="container thankyou__inner" data-reveal>
+      <div class="thankyou__card" data-thanks-card>
+        <span class="thankyou__badge" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="22" height="22">
+            <path
+              fill="currentColor"
+              d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm-1.2 14.4-4.6-4.6 1.5-1.5 3.1 3.1 6.5-6.5 1.5 1.5-8 7.9Z"
+            ></path>
+          </svg>
+        </span>
+        <h1>見積依頼を受け付けました</h1>
+        <p>
+          お問い合わせありがとうございます。墨泰のチームが仕様を検討し、簡潔な技術質問をする場合があります。
+          その後、選択されたチャネルで1営業日以内に商業見積をお送りします。
+        </p>
+
+        <div class="thankyou__next" data-thankyou-next hidden>
+          <span class="eyebrow">ソースへ戻る</span>
+          <a class="button button--outline" href="/" data-return-link>元のページへ戻る</a>
+        </div>
+      </div>
+
+      <div class="thankyou__pipeline">
+        <h2>送信後どうなりますか？</h2>
+        <ol class="funnel-pipeline">
+          <li>
+            <strong>一次検討</strong>
+            <span>仕様の完全性を確認し、簡潔な技術質問をする場合があります。</span>
+          </li>
+          <li>
+            <strong>商業見積</strong>
+            <span>価格、最小注文数量、包装・供給条件。</span>
+          </li>
+          <li>
+            <strong>サンプル / 提示</strong>
+            <span>サンプルまたは適合証明が必要な場合、フロー内で手配します。</span>
+          </li>
+        </ol>
+      </div>
+
+      <div class="thankyou__actions">
+        <a class="button button--accent" href="/quote">追加の見積依頼</a>
+        <a
+          class="button button--whatsapp"
+          href={`https://wa.me/${SITE.whatsapp}?text=${encodeURIComponent('墨泰様、見積依頼を送信したので状況を確認したいです。')}`}
+          target="_blank"
+          rel="noopener nofollow"
+        >
+          WhatsAppで追跡
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    // 送信後のリダイレクトで ?from=<ソースページ> を保持（フォームJSが _next に書き込み）；同ドメインを検証してから「ソースへ戻る」リンクを有効化、
+    // オープンリダイレクトを回避
+    const from = new URLSearchParams(location.search).get('from') || '';
+    let safe = '';
+    if (from) {
+      try {
+        const u = new URL(from, location.origin);
+        if (u.origin === location.origin) safe = u.pathname + u.search;
+      } catch {
+        safe = '';
+      }
+    }
+    const box = document.querySelector<HTMLElement>('[data-thankyou-next]');
+    const link = document.querySelector<HTMLAnchorElement>('[data-return-link]');
+    if (box && link && safe) {
+      link.href = safe;
+      box.hidden = false;
+    }
+  </script>
+</Layout>

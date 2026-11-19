@@ -1,0 +1,157 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import CtaBand from '../../components/CtaBand.astro';
+import { productCategories } from '../../data/site';
+import { models } from '../../data/models';
+
+const beltModels = models.filter((model) => model.categorySlug === 'abrasive-belts');
+const discModels = models.filter((model) => model.categorySlug === 'sanding-discs');
+---
+
+<Layout
+  title="研磨材製品 | ベルト・ディスク・スポンジ | 墨泰研磨材"
+  description="墨泰の研磨ベルト、フラップディスク、メッシュディスク、研磨スポンジをご紹介。仕様、用途、カスタマイズオプションを確認し、適切な製品の特定を支援。"
+  image="/images/workshop.jpg"
+>
+  <section class="page-hero page-hero--products">
+    <div class="container page-hero__inner">
+      <span class="eyebrow eyebrow--light">製品カタログ</span>
+      <h1>生産ラインを安定させるために設計された研磨材</h1>
+      <p>
+        製品カテゴリを選択し、用途、仕様、対応オプションを確認してください。
+        判断できない場合は、被削材タイプと加工方法をお送りいただければ、仕様の特定を支援します。
+      </p>
+    </div>
+  </section>
+
+  <section class="section section--light">
+    <div class="container">
+      <div class="catalog-grid">
+        {
+          productCategories.map((product, index) => (
+            <article class="catalog-card">
+              <div class="catalog-card__media">
+                <img src={product.image} alt={`${product.name} by 墨泰研磨材`} width="560" height="420" loading="lazy" />
+                <span class="catalog-card__number">0{index + 1}</span>
+              </div>
+              <div class="catalog-card__body">
+                <h2><a href={`/products/${product.slug}`}>{product.name}</a></h2>
+                <p>{product.description}</p>
+                <h3>対応用途</h3>
+                <ul class="check-list">
+                  {product.applications.map((application) => <li>{application}</li>)}
+                </ul>
+                <a class="button button--outline button--small" href={`/products/${product.slug}`}>
+                  仕様全文を見る
+                </a>
+              </div>
+            </article>
+          ))
+        }
+      </div>
+
+      <div class="model-browser" data-model-browser>
+        <div class="section-heading section-heading--split">
+          <div>
+            <span class="eyebrow">対応サイズ</span>
+            <h2>機械に合うサイズを検索</h2>
+          </div>
+          <label class="model-search">
+            <span class="sr-only">サイズまたはグループで検索</span>
+            <input type="search" placeholder="例: 533、1520、6インチ、フック&ループ" data-model-search />
+          </label>
+        </div>
+
+        <div class="model-filters" role="group" aria-label="製品グループで絞り込み">
+          <button class="model-filter is-active" type="button" data-model-filter="all">すべて ({models.length})</button>
+          <button class="model-filter" type="button" data-model-filter="belt">研磨ベルト ({beltModels.length})</button>
+          <button class="model-filter" type="button" data-model-filter="disc">研磨ディスク ({discModels.length})</button>
+        </div>
+
+        <p class="model-count" data-model-count aria-live="polite">{models.length} 件のサイズを表示</p>
+
+        <div class="model-table" data-model-table>
+          <div class="model-table__head" aria-hidden="true">
+            <span>サイズ</span><span>グループ</span><span>砥粒度</span><span>取付方式</span><span></span>
+          </div>
+          {
+            models.map((model) => (
+              <a class="model-row" href={`/products/models/${model.slug}`} data-model-group={model.type} data-model-text={`${model.name} ${model.sizeLabel} ${model.family}`.toLowerCase()}>
+                <span class="model-row__name">{model.name}</span>
+                <span class="model-row__family">{model.family}</span>
+                <span class="model-row__grit">{model.gritRange.length} 級 · {model.gritRange[0]}–{model.gritRange[model.gritRange.length - 1]}</span>
+                <span class="model-row__attachment">{model.attachment}</span>
+                <span class="model-row__cta">詳細 →</span>
+              </a>
+            ))
+          }
+        </div>
+
+        <p class="model-empty" data-model-empty hidden>一致するサイズが見つかりません。他のキーワードをお試しください、または問い合わせフォームから仕様をお送りください。</p>
+      </div>
+
+      <div class="catalog-guide">
+        <div>
+          <span class="eyebrow">最適な仕様が決まりませんか？</span>
+          <h2>製品名でなく、用途から始めましょう</h2>
+          <p>
+            被削材、使用する機械、要求される仕上げタイプをお知らせください。
+            工具形状、砥粒、基材の特定を支援し、明確な見積を送付します。
+          </p>
+        </div>
+        <div class="catalog-guide__steps">
+          <div><strong>01</strong><span>業界を選択</span></div>
+          <div><strong>02</strong><span>製品推奨を確認</span></div>
+          <div><strong>03</strong><span>仕様と数量を送信</span></div>
+        </div>
+        <div class="catalog-guide__actions">
+          <a class="button button--primary" href="/industries">ソリューションを探す</a>
+          <a class="button button--outline" href="/resources/abrasive-grit-guide">砥粒ガイド</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <CtaBand
+    title="複数製品の仕様を比較したいですか？"
+    text="製品リスト、サイズ、数量をお送りください。確認のうえ、購買チームの比較が容易な統一見積を提示します。"
+  />
+
+  <script>
+    const browser = document.querySelector('[data-model-browser]');
+    if (browser) {
+      const search = browser.querySelector<HTMLInputElement>('[data-model-search]');
+      const rows = [...browser.querySelectorAll<HTMLElement>('[data-model-group]')];
+      const filters = [...browser.querySelectorAll<HTMLButtonElement>('[data-model-filter]')];
+      const count = browser.querySelector<HTMLElement>('[data-model-count]');
+      const empty = browser.querySelector<HTMLElement>('[data-model-empty]');
+      let activeGroup = 'all';
+
+      const apply = () => {
+        const term = search?.value.trim().toLowerCase() ?? '';
+        let visible = 0;
+
+        for (const row of rows) {
+          const matchesGroup = activeGroup === 'all' || row.dataset.modelGroup === activeGroup;
+          const matchesTerm = !term || (row.dataset.modelText ?? '').includes(term);
+          const show = matchesGroup && matchesTerm;
+          row.hidden = !show;
+          if (show) visible += 1;
+        }
+
+        if (count) count.textContent = `${visible} 件のサイズを表示`;
+        if (empty) empty.hidden = visible > 0;
+      };
+
+      search?.addEventListener('input', apply);
+
+      for (const filter of filters) {
+        filter.addEventListener('click', () => {
+          activeGroup = filter.dataset.modelFilter ?? 'all';
+          filters.forEach((item) => item.classList.toggle('is-active', item === filter));
+          apply();
+        });
+      }
+    }
+  </script>
+</Layout>

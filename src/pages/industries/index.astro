@@ -1,0 +1,70 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import CtaBand from '../../components/CtaBand.astro';
+import { industries } from '../../data/site';
+---
+
+<Layout
+  title="業界別の研磨ソリューション | 墨泰研磨材"
+  description="木材加工、金属仕上げ、自動車メンテナンス向けの研磨材ソリューション。各業界の課題と推奨製品・用途をご確認ください。"
+  image="/images/workshop.jpg"
+>
+  <section class="page-hero page-hero--industries">
+    <div class="container page-hero__inner">
+      <span class="eyebrow eyebrow--light">用途別ソリューション</span>
+      <h1>製品名でなく、加工の課題から始めましょう</h1>
+      <p>
+        各業界には異なる被削材と加工方法があります。要求される表面、工程、適切な工具を結びつけ、
+        生産ラインで実行可能な推奨を行います。
+      </p>
+    </div>
+  </section>
+
+  <section class="section section--light">
+    <div class="container">
+      <div class="industry-list">
+        {
+          industries.map((industry, index) => (
+            <article class="industry-row">
+              <div class="industry-row__media">
+                <img src={industry.image} alt="" width="520" height="360" loading="lazy" />
+                <span>0{index + 1}</span>
+              </div>
+              <div class="industry-row__content">
+                <span class="eyebrow">業界：{industry.name}</span>
+                <h2><a href={`/industries/${industry.slug}`}>{industry.title}</a></h2>
+                <p>{industry.description}</p>
+                <h3>この業界の主要課題</h3>
+                <ul class="check-list">
+                  {industry.challenges.map((challenge) => <li>{challenge}</li>)}
+                </ul>
+                <a class="button button--outline button--small" href={`/industries/${industry.slug}`}>
+                  ソリューション詳細
+                </a>
+              </div>
+            </article>
+          ))
+        }
+      </div>
+
+      <div class="catalog-guide">
+        <div>
+          <span class="eyebrow">特殊な要件</span>
+          <h2>リストにない用途はありますか？</h2>
+          <p>
+            自動車や精密工具など他の業界でも、仕様特定には同じアプローチが必要です。
+            作業内容をお送りいただければ、最も近い選択肢を特定します。
+          </p>
+        </div>
+        <div class="catalog-guide__actions">
+          <a class="button button--primary" href="/quote">要件を送信</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <CtaBand
+    title="実際の加工から始めましょう"
+    text="被削材、機械タイプ、要求される仕上げ結果があれば開始できます。供給可能な仕様に変換します。"
+  />
+</Layout>
