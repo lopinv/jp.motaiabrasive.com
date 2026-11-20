@@ -1,13 +1,14 @@
 /**
  * 文章内容生成器
- * 基于选题规格 + 模板 + 产品数据 生成符合提示词规范的阿语文章 HTML
+ * 基于选题规格 + 模板 + 产品数据 生成符合提示词规范的日文文章 HTML
+ * （日本站 jp.motaiabrasive.com，地域维度为日本地域 jaRegions）
  */
 
 import { models, getModelByCategory } from '../data/models';
 import { productCategories, industries, SITE, applicationScenes } from '../data/site';
 import { glossary } from '../data/glossary';
 import { articleTemplates, getTemplate, ArticleTemplate } from './article-templates';
-import { TopicSpec, topicMatrix, gccCountries, industrySegments, keywordLibrary } from './topic-matrix';
+import { TopicSpec, topicMatrix, jaRegions, industrySegments, keywordLibrary } from './topic-matrix';
 
 // ========== 确定性种子（slug → 0..N 变体选择，保证可复现） ==========
 
@@ -32,25 +33,25 @@ function pickBySeed<T>(arr: T[], seed: number, mod: number): T | undefined {
 
 // ========== 术语表快速查找 ==========
 
-const termMap = new Map(glossary.map(g => [g.term.toLowerCase(), g.ar]));
+const termMap = new Map(glossary.map(g => [g.term.toLowerCase(), g.ja]));
 const productTermMap: Record<string, string> = {
-  'abrasive belts': 'أحزمة الصنفرة',
-  'sanding belts': 'أحزمة صنفرة',
-  'grinding belts': 'أحزمة شحذ',
-  'abrasive discs': 'أقراص قاشة',
-  'sanding discs': 'أقراص الصنفرة',
-  'flap discs': 'أقراص كوت (Flap Disc)',
-  'mesh sanding discs': 'أقراص صنفرة شبكية',
-  'PSA': 'لصق ذاتي (PSA)',
-  'hook-and-loop': 'هوك آند لوب',
-  'sanding sponges': 'إسفنجيات صنفرة',
-  'grit': 'درجة الغرِت',
-  'backing': 'القاعدة',
-  'resin bond': 'رابطة إسفنجية',
-  'aluminum oxide': 'أكسيد الألومنيوم',
-  'zirconia alumina': 'زركونيا ألومينا',
-  'ceramic': 'حبيبات سيراميك',
-  'silicon carbide': 'كربيد السيليكون (SiC)',
+  'abrasive belts': '研磨ベルト',
+  'sanding belts': 'サンディングベルト',
+  'grinding belts': '研削ベルト',
+  'abrasive discs': '研磨ディスク',
+  'sanding discs': 'サンディングディスク',
+  'flap discs': 'フラップディスク',
+  'mesh sanding discs': 'メッシュディスク',
+  'PSA': 'PSA（圧感型粘着）',
+  'hook-and-loop': 'フック&ループ',
+  'sanding sponges': '研磨スポンジ',
+  'grit': '砥粒',
+  'backing': '基材',
+  'resin bond': '樹脂接着',
+  'aluminum oxide': '酸化アルミニウム',
+  'zirconia alumina': 'ジルコニアアルミナ',
+  'ceramic': 'セラミック砥粒',
+  'silicon carbide': '炭化シリコン（SiC）',
 };
 
 function t(term: string): string {
@@ -76,7 +77,7 @@ function getProductCategory(slug: string) {
     // 返回一个最小的回退对象，避免后续代码报错
     return {
       slug,
-      name: getProductFamilyNameAr(slug),
+      name: getProductFamilyNameJa(slug),
       title: '',
       description: '',
       image: '',
@@ -92,8 +93,8 @@ function getIndustry(slug: string) {
   return industries.find(i => i.slug === slug);
 }
 
-function getGCCCountry(code: string) {
-  return gccCountries.find(c => c.code === code);
+function getJaRegion(code: string) {
+  return jaRegions.find(c => c.code === code);
 }
 
 /**
@@ -106,10 +107,10 @@ export function generateArticle(topic: TopicSpec): GeneratedArticle {
   const model = topic.productModel ? getModel(topic.productModel) : null;
   const productCat = getProductCategory(topic.productFamily);
   const industry = getIndustry(topic.industry);
-  const gccCountry = getGCCCountry(topic.gccCountry);
+  const jaRegion = getJaRegion(topic.jaRegion);
 
-  const frontmatter = buildFrontmatter(topic, template, model, productCat, industry, gccCountry);
-  const html = buildArticleHTML(topic, template, model, productCat, industry, gccCountry);
+  const frontmatter = buildFrontmatter(topic, template, model, productCat, industry, jaRegion);
+  const html = buildArticleHTML(topic, template, model, productCat, industry, jaRegion);
 
   return { frontmatter, html, slug: topic.slug };
 }
@@ -123,7 +124,7 @@ function buildFrontmatter(
   model: typeof models[0] | null,
   productCat: typeof productCategories[0] | undefined,
   industry: typeof industries[0] | undefined,
-  gccCountry: typeof gccCountries[0] | undefined
+  jaRegion: typeof jaRegions[0] | undefined
 ) {
   const now = new Date().toISOString();
 
@@ -131,19 +132,19 @@ function buildFrontmatter(
   const internalLinks = buildInternalLinks(topic, model, productCat, industry);
 
   // 外链：2-4 条权威来源
-  const externalLinks = buildExternalLinks(topic, industry, gccCountry);
+  const externalLinks = buildExternalLinks(topic, industry, jaRegion);
 
   // FAQ
-  const faq = buildFAQ(topic, model, productCat, industry, gccCountry);
+  const faq = buildFAQ(topic, model, productCat, industry, jaRegion);
 
   // 规格表
   const specsTable = buildSpecsTable(topic, model, productCat);
 
   // 信息块
-  const infoBoxes = buildInfoBoxes(topic, model, productCat, industry, gccCountry);
+  const infoBoxes = buildInfoBoxes(topic, model, productCat, industry, jaRegion);
 
   // 语音搜索查询
-  const voiceSearchQueries = buildVoiceSearchQueries(topic, model, productCat, industry, gccCountry);
+  const voiceSearchQueries = buildVoiceSearchQueries(topic, model, productCat, industry, jaRegion);
 
   // CTA
   const cta = buildCTA(topic, model, productCat);
@@ -158,7 +159,7 @@ function buildFrontmatter(
     productFamily: topic.productFamily,
     productModel: topic.productModel,
     industry: topic.industry,
-    gccCountry: topic.gccCountry,
+    jaRegion: topic.jaRegion,
     keywords: [topic.primaryKeyword, ...topic.secondaryKeywords, ...topic.longTailKeywords],
     primaryKeyword: topic.primaryKeyword,
     secondaryKeywords: topic.secondaryKeywords,
@@ -187,32 +188,32 @@ function buildArticleHTML(
   model: typeof models[0] | null,
   productCat: typeof productCategories[0] | undefined,
   industry: typeof industries[0] | undefined,
-  gccCountry: typeof gccCountries[0] | undefined
+  jaRegion: typeof jaRegions[0] | undefined
 ): string {
   const sections: string[] = [];
 
   // 根容器
-  sections.push('<div dir="rtl" lang="ar" class="article-content">');
+  sections.push('<div dir="ltr" lang="ja" class="article-content">');
 
   // 型号真实规格差异块（根 div 内、BLUF 前），保证同类目跨型号正文可区分（B 去重）
   sections.push(buildModelSpecBlock(model));
 
   // BLUF + 直接回答块
-  sections.push(buildBLUF(topic, model, productCat, industry, gccCountry));
-  sections.push(buildDirectAnswerBlock(topic, model, productCat, industry, gccCountry));
+  sections.push(buildBLUF(topic, model, productCat, industry, jaRegion));
+  sections.push(buildDirectAnswerBlock(topic, model, productCat, industry, jaRegion));
 
   // 按模板结构生成 H2 章节
   template.structure.forEach((h2Title, idx) => {
-    const sectionHtml = buildSection(h2Title, topic, model, productCat, industry, gccCountry, template, idx);
+    const sectionHtml = buildSection(h2Title, topic, model, productCat, industry, jaRegion, template, idx);
     if (sectionHtml) sections.push(sectionHtml);
   });
 
   // 广度差异化：按种子插入 0–2 个可选附加章节（复用现有构建器，章节数随 slug 浮动）
   const optSeed = seedOf(topic.slug + ':opt', 1_000_000);
   const optionalSections: Array<{ title: string; build: () => string }> = [
-    { title: 'تحسين التكلفة على دورة الاستخدام', build: () => buildCostOptimization(topic, model, productCat) },
-    { title: 'الصيانة الوقائية والعمر التشغيلي', build: () => buildPreventiveMaintenance(topic, model) },
-    { title: 'بطاقة المصطلحات السريعة', build: () => buildGlossaryCard(topic) },
+    { title: '使い切りコスト（TCO）の最適化', build: () => buildCostOptimization(topic, model, productCat) },
+    { title: '予防整備と使用寿命', build: () => buildPreventiveMaintenance(topic, model) },
+    { title: '用語クイックカード', build: () => buildGlossaryCard(topic) },
   ];
   // 选 0–2 个：bit 各独立决定一个章节是否插入（k0 ~50%，k1 ~33%）
   for (let k = 0; k < 2; k++) {
@@ -225,7 +226,7 @@ function buildArticleHTML(
   }
 
   // FAQ
-  sections.push(buildFAQSection(topic, model, productCat, industry, gccCountry));
+  sections.push(buildFAQSection(topic, model, productCat, industry, jaRegion));
 
   // CTA
   sections.push(buildCTASection(topic, model, productCat));
@@ -242,13 +243,13 @@ function buildModelSpecBlock(model: typeof models[0] | null): string {
   const lines = [
     // MDX 合法注释语法（HTML 注释 <!-- --> 在 MDX/JSX 中非法，会中断构建）
     '{/* model-spec-block */}',
-    `<h2>مواصفات ${model.name} (الفروقات الجوهرية)</h2>`,
+    `<h2>${model.name} の仕様（主要な違い）</h2>`,
     `<ul class="plain-links">`,
-    `  <li><strong>درجات الغرِت المتاحة:</strong> ${grits}</li>`,
-    `  <li><strong>القاعدة/الخلف:</strong> ${model.backing}</li>`,
-    `  <li><strong>نظام التثبيت:</strong> ${model.attachment}</li>`,
-    ...model.useCases.map((u) => `  <li><strong>استخدام أساسي:</strong> ${u}</li>`),
-    ...model.notes.slice(0, 2).map((n) => `  <li><strong>ملاحظة فنية:</strong> ${n}</li>`),
+    `  <li><strong>対応砥粒:</strong> ${grits}</li>`,
+    `  <li><strong>基材:</strong> ${model.backing}</li>`,
+    `  <li><strong>取付システム:</strong> ${model.attachment}</li>`,
+    ...model.useCases.map((u) => `  <li><strong>主な用途:</strong> ${u}</li>`),
+    ...model.notes.slice(0, 2).map((n) => `  <li><strong>技術メモ:</strong> ${n}</li>`),
     `</ul>`,
   ];
   return lines.join('\n');
@@ -262,118 +263,118 @@ function buildBLUF(
   model: typeof models[0] | null,
   productCat: typeof productCategories[0] | undefined,
   industry: typeof industries[0] | undefined,
-  gccCountry: typeof gccCountries[0] | undefined
+  jaRegion: typeof jaRegions[0] | undefined
 ): string {
-  const productName = model?.name || productCat?.name || getProductFamilyNameAr(topic.productFamily);
+  const productName = model?.name || productCat?.name || getProductFamilyNameJa(topic.productFamily);
   const industryName = industry?.name || industrySegments.find(i => i.code === topic.industry)?.name || '';
-  const countryName = gccCountry?.name || '';
+  const regionName = jaRegion?.name === '全国' ? '全国' : (jaRegion ? `${jaRegion.name}地域` : '');
   // 确定性种子：同一 slug 永远同一组变体（可复现），不同 slug 均匀分散
   const sv = seedOf(topic.slug, 1_000_000);
   const pick3 = <T,>(arr: T[]) => pickBySeed(arr, sv, 3) ?? arr[0];
   const pick2 = <T,>(arr: T[]) => pickBySeed(arr, Math.floor(sv / 3), 2) ?? arr[0];
   // 型号专属数据注入（有型号才加）
-  const useCase = model?.useCases?.length ? ` من التطبيقات الداعمة: ${pick2([...model.useCases])}.` : '';
-  const note = model?.notes?.length ? ` ${pick2([...model.notes])}.` : '';
-  // 行业痛点注入（3 行业 site.ts + 4 行业 fallback）
-  const challenge = industry?.challenges?.length ? ` أبرز التحدي: ${industry.challenges[sv % industry.challenges.length]}.` : '';
+  const useCase = model?.useCases?.length ? ` 補足用途：${pick2([...model.useCases])}。` : '';
+  const note = model?.notes?.length ? ` ${pick2([...model.notes])}。` : '';
+  // 行业痛点注入（site.ts industries + 全行业 fallback）
+  const challenge = industry?.challenges?.length ? ` 最も多い課題：${industry.challenges[sv % industry.challenges.length]}。` : '';
 
   let bluf = '';
 
   switch (topic.articleType) {
     case 'product-comparison':
       bluf = pick3([
-        `اختيار ${productName} يعتمد على مادة القطعة، مرحلة التشطيب، ونوع الماكينة. للـ ${industryName}${countryName ? ` في ${countryName}` : ''}، تُحدد درجة الغرِت، عرض الحزام/قطر القرص، ونظام التثبيت قبل الطلب.`,
-        `قرار ${productName} مقابل البدائل يُبنى على ثلاث محاور: المادة، مرحلة العمل، والتوافق مع الماكينة. للـ ${industryName}${countryName ? ` في ${countryName}` : ''}، المقاس ونظام التثبيت يحددان الخاطئ من الصائب.`,
-        `قبل الطلب، حدّد للمادة والمرحلة والماكينة، ثم اختر من ${productName} المواصفة المناسبة لـ ${industryName}${countryName ? ` في ${countryName}` : ''}. الدرجات، القياس، ونظام التثبيت محاور القرار الأساسية.`,
+        `${productName}の選択は、加工材料・仕上げ工程・機械タイプに依存します。${industryName}（${regionName}）では、砥粒・ベルト幅/ディスク径・取付システムを発注前に確定します。`,
+        `${productName}と代替品の判断は、材料・工程・機械の互換性という3軸で進めます。${industryName}（${regionName}）では、サイズと取付システムが選択の分かれ目です。`,
+        `発注前に材料・工程・機械を確定し、${productName}から最適な仕様を選ぶ。砥粒・寸法・取付システムが${industryName}（${regionName}）での主要な判断軸です。`,
       ]);
       bluf += useCase;
       break;
     case 'buying-guide':
       bluf = pick3([
-        `تحديد مواصفات ${productName} يتم في ثلاث خطوات: مادة العمل → مرحلة التشطيب → توافق الماكينة. هذا الدليل يغطي المعايير، تسلسل الدرجات، ونموذج طلب عرض سعر جاهز للاستخدام.`,
-        `إعداد طلب ${productName} بدقة يبدأ من ثلاثة أسئلة: ما المادة، ما مرحلة التشطيب، وأي ماكينة ستُستخدم. الدليل التالي يربط الإجابات بمواصفة قابلة للاستفسار.`,
-        `قبل طلب عرض سعر لـ ${productName}، حدد المادة، المرحلة، ونظام التثبيت: هذه المحاور الثلاثة تبني عليها المواصفة النهائية مع تسلسل الدرجات ونموذج الاستفسار.`,
+        `${productName}の仕様は3ステップで確定します：加工材料 → 仕上げ工程 → 機械の互換性。本ガイドは基準、砥粒シークエンス、見積依頼テンプレートまでカバーしています。`,
+        `${productName}の正確な見積依頼は3つの質問から始まります：材料は何ですか、どの工程ですか、どの機械を使いますか。以下のガイドはその答えを、発注可能な仕様につなげます。`,
+        `${productName}の見積依頼の前に、材料・工程・取付システムを確定しましょう。この3点が最終仕様の土台となり、砥粒シークエンスと見積依頼フォームにつながります。`,
       ]);
       bluf += useCase + challenge;
       break;
     case 'technical-guide':
       bluf = pick3([
-        `${productName} يعتمد على نوع الحبيبات (أكسيد الألومنيوم، زركونيا، سيراميك)، القاعدة (قماش/ورق/بوليمر)، والرابطة الإسفنجية. معايير FEPA/ISO تحدد درجة الغرِت بدقة.`,
-        `ثلاثة مكونات تحدد أداء ${productName}: الحبيبات، القاعدة، والرابطة. اختيار الحبيبات وفق المادة، والقاعدة وفق الماكينة، والدرجة وفق FEPA P.`,
-        `فهم ${productName} يبدأ من نوع الحبيبات (Al₂O₃/SiC/زركونيا/سيراميك) ثم القاعدة والرابطة، ثم قراءة درجة الغرِت وفق FEPA P دون خلطها بـ ANSI أو JIS.`,
+        `${productName}の性能は砥粒（酸化アルミニウム・ジルコニアアルミナ・セラミック）、基材（布/紙/ポリマー）、接着剤の3要素で決まります。砥粒グレードは FEPA/ISO 基準で精密に示されます。`,
+        `${productName}の性能を決める3要素：砥粒、基材、接着剤。砥粒は材料に合わせ、基材は機械に合わせ、グレードは FEPA P で指定します。`,
+        `${productName}の理解は砥粒（Al₂O₃/SiC/ジルコニアアルミナ/セラミック）から始まり、次は基材と接着剤、そして FEPA P による砥粒読解です。ANSI や JIS と混同しないことが重要です。`,
       ]);
       bluf += note;
       break;
     case 'application-guide':
       bluf = pick3([
-        `في ${industryName}${countryName ? ` (${countryName})` : ''}، دورة ${productName} تشمل: إزالة → تشطيب متوسط → لمسة نهائية. تسلسل الغرِت النموذجي: 60–80 → 120–180 → 240–400 حسب المادة.`,
-        `تطبيق ${productName} في ${industryName}${countryName ? ` (${countryName})` : ''} يمر بثلاث مراحل: الإزالة الخشنة، التسوية، واللمسة النهائية، مع تسلسل غرِت يبدأ من 60–80 وينتهي عند 240–400 أو أعلى.`,
-        `للعمل على ${industryName}${countryName ? ` في ${countryName}` : ''}، رتّب تشغيل ${productName} من الخشن إلى الناعم: إزالة (60–80) ثم تسوية (120–180) ثم تشطيب (240–400+) حسب المادة والنتيجة.`,
+        `${industryName}（${regionName}）での ${productName} の工程は、粗削り → 中間仕上げ → 最終仕上げの3段階です。標準的な砥粒シークエンスは 60–80 → 120–180 → 240–400（材料次第）です。`,
+        `${industryName}（${regionName}）への ${productName} の適用は、材料除去 → 平坦化 → 最終仕上げの3段階で進みます。砥粒シークエンスは 60–80 から始まり、240–400 以上で終えます。`,
+        `${industryName}（${regionName}）では ${productName} の作業を粗→細の順で組みます：粗削り（60–80）、平坦化（120–180）、仕上げ（240–400+）。材料と仕上がり目標で調整します。`,
       ]);
       bluf += useCase + challenge;
       break;
     case 'process-tutorial':
       bluf = pick2([
-        `العملية القياسية لـ ${industryName || 'التطبيق'} باستخدام ${productName}: تجهيز السطح → درجة خشنة للإزالة → درجة متوسطة للتسوية → درجة ناعمة للتشطيب. كل مرحلة لها معلمات ماكينة محددة.`,
-        `تسلسل تشغيل ${productName} في ${industryName || 'التطبيق'}: نظّف السطح، ثم صنفرة الإزالة، ثم التسوية، ثم التشطيب. المعلمات (سرعة، ضغط، تغذية) تُضبط لكل مرحلة.`,
+        `${industryName || '用途'}における${productName}の標準工程：表面準備 → 粗削り砥粒 → 中間砥粒 → 仕上げ砥粒。各段階に機械パラメータ設定があります。`,
+        `${industryName || '用途'}での${productName}の作業手順：表面清掃、粗削り、平坦化、仕上げの順です。速度・圧力・送り量は各段階で調整します。`,
       ]);
       bluf += note;
       break;
     case 'troubleshooting':
       bluf = pick3([
-        `أعطال ${productName} الشائعة (تآكل سريع، انسداد، انحراف) تعود عادةً إلى: درجة غرِت غير مناسبة، ضغط زائد، سرعة غير مطابقة، أو ضعف سحب الغبار. الجدول أدناه يربط العارض بالسبب والحل.`,
-        `عند ملاحظة تآكل غير طبيعي أو انسداد أو انحراف في ${productName}، راجع بالترتيب: الغرِت، الضغط، السرعة، ثم نظام الشفط. كل عارض له سبب محدد وحل مباشر في الجدول التالي.`,
-        `تشخيص مشاكل ${productName} يبدأ من العارض المرصود (سرعة العطل، نمط الانسداد، اتجاه الانحراف) ثم يطابق السبب: غير ملاءمة الغرِت، تحميل زائد، أو قصور في الشفط.`,
+        `${productName}のよくある不具合（摩耗が早い、ローディング、ベルト偏位）は、砥粒不適合・圧力過大・速度不一致・集じん不足に起因することが多いです。下の表で症状→原因→対策を対応付けます。`,
+        `${productName}で異常な摩耗・ローディング・偏位を見たら、順に確認：砥粒、圧力、速度、集じんシステム。各症状には原因と直接的な対策があります。`,
+        `${productName}の不具合診断は、観察された症状（摩耗速度、付着パターン、偏位方向）から始め、原因を特定します：砥粒不適合、過大な荷重、集じん不足などです。`,
       ]);
       bluf += useCase;
       break;
     case 'product-spec-detail':
       bluf = pick2([
-        `${model?.name || productName}: ${model?.summary || productCat?.description || 'مواصفات كاملة في الأسفل'}. المقاس: ${model?.sizeAr || 'متعدد'}، الدرجات: ${model?.gritRange.join('، ') || 'حسب الطلب'}، القاعدة: ${model?.backing || 'يُحدد مع المشتري'}.`,
-        `${model?.name || productName} يتوفر بالمقاس ${model?.sizeAr || 'متعدد'} بدرجات ${model?.gritRange.join('–') || 'حسب الطلب'} وقاعدة ${model?.backing || 'تُحدد مع المشتري'}. التفاصيل الكاملة وخيارات التخصيص في الجداول أدناه.`,
+        `${model?.name || productName}: ${model?.summary || productCat?.description || '詳細仕様は以下の表を参照'}。サイズ: ${model?.sizeJa || '複数'}、砥粒: ${model?.gritRange.join('、') || 'お見積り対応'}、基材: ${model?.backing || '購入者と確認'}。`,
+        `${model?.name || productName} はサイズ ${model?.sizeJa || '複数'}、砥粒 ${model?.gritRange.join('–') || 'お見積り対応'}、基材 ${model?.backing || '購入者と確認'} で供給可能です。完全な詳細とカスタマイズオプションは下表を参照してください。`,
       ]);
       bluf += note;
       break;
     case 'procurement-guide':
       bluf = pick3([
-        `شراء ${productName} باحترافية: 1) اكتب مواصفة تقنية كاملة 2) اطلب عينات للمقارنة 3) قيّم الموردين بمصفوفة موحدة 4) قارن العروض الكلية (سعر+شحن+شروط) 5) ثبت شروط التعاقد والجودة.`,
-        `دورة شراء ${productName} تبدأ من مواصفة مكتوبة واضحة، ثم عينات مطابقة، ثم تقييم الموردين بمعايير موحدة قبل قارن العروض الشاملة وتثبيت بنود التعاقد.`,
-        `لشراء ${productName} بالجملة دون مفاجآت: صُغ المواصفة، اطلب عينة، قيّم الموردين بمصفوفة واحدة، وقارن العروض على السعر الشامل والمهلة والشروط. الخطوات مفصلة أدناه.`,
+        `${productName}のプロ的な調達：1) 完全な技術仕様の作成 2) 比較用のサンプル依頼 3) 統一マトリクスでのサプライヤー評価 4) 総合見積比較（価格+輸送+条件）5) 契約と品質条件の確定。`,
+        `${productName}の調達は、明確な書面仕様から始まり、サンプル照合、統一基準によるサプライヤー評価、総合見積比較、契約条項の確定まで進みます。`,
+        `${productName}の大量調達でトラブルを避けるには：仕様の作成、サンプル依頼、統一マトリクスでのサプライヤー評価、総合価格・納期・条件の見積比較。以下に詳細手順をまとめます。`,
       ]);
       bluf += useCase + challenge;
       break;
     case 'wholesale-oem-guide':
       bluf = pick3([
-        `التعاون بالجملة/OEM لـ ${productName}: نحدد خيارات التخصيص (الشعار، التغليف، الألوان)، الحد الأدنى للكمية، مراحل تأكيد العينة، وجدول التوريد. كل التفاصيل في الدليل أدناه.`,
-        `لطلب OEM/جملة على ${productName}، جهّز ملف الشعار والتغليف والدرجات المطلوبة، ثم تمر عبر العينة المؤكدة قبل الإنتاج الكمي. خيارات التخصيص والحد الأدنى موضحان أدناه.`,
-        `مسار الجملة و OEM لـ ${productName} يمر بخمسة محطات: المواصفة، العينة، التأكيد، الإنتاج الكمي، والتسليم الموثق. خيارات التغليف والتخصيص محددة في الدليل التالي.`,
+        `${productName}の卸売/OEM協業：カスタマイズオプション（ロゴ、包装、カラー）を確定し、最小注文数量、サンプル確認工程、納品スケジュールを計画します。詳細は下のガイドを参照してください。`,
+        `${productName}のOEM/大量発注には、ロゴ・包装ファイルと必要砥粒グレードの確定が先です。量産前にサンプルを承認します。カスタマイズオプションとMOQは下表に示します。`,
+        `${productName}の卸売・OEMは5つの工程で進みます：仕様確定、サンプル、承認、量産、納品確認。包装とカスタマイズの詳細は以下のガイドにまとめます。`,
       ]);
       bluf += note;
       break;
     case 'industry-market':
       bluf = pick2([
-        `قطاع ${industryName} في ${gccCountry?.name || 'الخليج'} يشهد تحديث معايير (FEPA/ISO/SASO/ESMA) واتجاه نحو حبيبات سيراميك/زركوريا للأداء الأعلى. التأثير على قرارات شراء ${productName}: مواصفات أدق، دورات أقصر.`,
-        `تحولات قطاع ${industryName} في ${gccCountry?.name || 'الخليج'} (معايير FEPA/ISO، حبيبات متطورة، توثيق أدق) تعني أن شراء ${productName} أصبح قرارًا بالمواصفة لا بالاسم التجاري.`,
+        `${regionName || '日本'}の${industryName}業界では、規格のアップデート（JIS/JANSI/ISO/FEPA）とセラミック・ジルコニアアルミナ砥粒への移行が進んでいます。${productName}の調達判断への影響：仕様の詳細化、評価期間の短縮。`,
+        `${regionName || '日本'}の${industryName}業界の変化（JIS/JANSI/ISO/FEPA規格、高性能砥粒、厳密な文書管理）により、${productName}の購入はブランド名ではなく仕様が基準になるよう変わっています。`,
       ]);
       bluf += challenge;
       break;
-    case 'gcc-regional-sourcing':
+    case 'jp-regional-sourcing':
       bluf = pick3([
-        `استيراد ${productName} إلى ${gccCountry?.name}: مطلب SASO/ESMA/GSO للامتثال، ميناء ${getMainPort(gccCountry?.code)} للتخليص، مهلة بحري 25–35 يوماً، دفع LC/TT. لا نملك مخزوناً محلياً ولا مكتباً في ${gccCountry?.name}.`,
-        `خطة توريد ${productName} إلى ${gccCountry?.name} تعني: مطابقة SASO/ESMA/GSO، التخليص عبر ميناء ${getMainPort(gccCountry?.code)}، مهلة بحرية 25–35 يوماً، وشروط دفع LC/TT. الشحن من المصنع مباشرة دون مخزون محلي.`,
-        `لضمان سلاسة استيراد ${productName} إلى ${gccCountry?.name}: جهّز شهادات المطابقة، حدد ميناء التخليص (${getMainPort(gccCountry?.code)})، ونسق الدفع (LC/TT). لا يوجد مخزون أو مكتب محلي لدينا.`,
+        `${regionName}への${productName}の輸入：JIS/JANSI適合要件の確認、主要港湾 ${getMainPort(jaRegion?.code)} での通関、海上輸送7–15日、決済はLC/TT。当社は当地に在庫も拠点も保有していません。`,
+        `${regionName}への${productName}供給計画には：JIS/JANSI適合、${getMainPort(jaRegion?.code)} 経由の通関、海上7–15日のリードタイム、LC/TT決済。工場直送で当地在庫なし。`,
+        `${regionName}へのスムーズな輸入のため：適合証書の準備、通関港（${getMainPort(jaRegion?.code)}）の確定、決済手段（LC/TT）の調整。当地に在庫も拠点もありません。`,
       ]);
       bluf += useCase;
       break;
     case 'faq-buyers-guide':
       bluf = pick2([
-        `أهم 3 أسئلة لمشتري ${productName}: 1) أي درجة غرِت لـ ${industryName}؟ → تعتمد على مرحلة العمل. 2) ما الحد الأدنى للطلب؟ → يُحدد بالمواصفة. 3) كم مدة التوريد؟ → تُحدد في عرض السعر حسب الكمية والمواصفة. التفاصيل في الأسئلة أدناه.`,
-        `مشترو ${productName} يسألون عادةً عن: اختيار الغرِت لـ ${industryName}، حد الكمية الأدنى، ومهلة التوريد. الإجابات المباشرة في قسم الأسئلة أدناه مع نموذج الاستفسار الجاهز.`,
+        `${productName}の購入者が最もよく尋ねる3点：1) ${industryName}に合う砥粒は？→ 工程段階で決まります。2) MOQは？→ 仕様で決まります。3) 納期は？→ 数量と仕様で見積りで確定します。詳細は下の質問セクションを参照ください。`,
+        `${productName}の購入者によくある質問：${industryName}への砥粒選定、MOQ、納期。直接回答と、完成した見積依頼テンプレートは下のセクションにまとめます。`,
       ]);
       bluf += challenge;
       break;
     default:
-      bluf = `${productName} لـ ${industryName}${countryName ? ` في ${countryName}` : ''}: المواصفات، الدرجات، وخطوات الطلب موضحة أدناه.`;
+      bluf = `${productName}（${industryName}${regionName ? ` ${regionName}` : ''}）：仕様、砥粒、発注手順は以下のとおりです。`;
       bluf += useCase;
   }
 
@@ -388,55 +389,55 @@ function buildDirectAnswerBlock(
   model: typeof models[0] | null,
   productCat: typeof productCategories[0] | undefined,
   industry: typeof industries[0] | undefined,
-  gccCountry: typeof gccCountries[0] | undefined
+  jaRegion: typeof jaRegions[0] | undefined
 ): string {
-  const productName = model?.name || productCat?.name || getProductFamilyNameAr(topic.productFamily);
+  const productName = model?.name || productCat?.name || getProductFamilyNameJa(topic.productFamily);
   let answer = '';
 
   switch (topic.articleType) {
     case 'product-comparison':
-      answer = `${productName} يناسب ${industry?.name || 'التطبيقات الصناعية'} عند الحاجة إلى إزالة مادة سريعة/متوسطة مع تحكم في التشطيب. البديل (أقراص/أحزمة أخرى) يُختار عند مساحات أضيق أو ماكينات مختلفة.`;
+      answer = `${productName}は、広範囲の材料を素早く除去しながら仕上げを制御したい場合に適しています。代替品（他のディスク/ベルト）は、狭いスペースや機械が異なる場合、細かな作業に向きます。`;
       break;
     case 'buying-guide':
-      answer = `حدد: 1) مادة القطعة (خشب/معدن/بلاستيك) 2) مرحلة العمل (إزالة/تشطيب/لمسة نهائية) 3) ماكينة ومقاس التثبيت. ثم اختر الغرِت: 40–80 للإزالة، 100–180 للتشطيب، 240+ للنهائي.`;
+      answer = `確定するのは：1) 加工材料（木/金属/プラスチック）2) 工程（粗削り/仕上げ/最終）3) 機械と取付サイズ。その後砥粒を選択：40–80 は除去、100–180 は仕上げ、240+ は最終仕上げ。`;
       break;
     case 'technical-guide':
-      answer = `الحبيبات: أكسيد ألومنيوم (عام)، زركونيا (معدن صلب)، سيراميك (أداء عالي). القاعدة: قماش (مرن)، ورق (ثابت)، بوليمر (مقاوم رطوبة). الرابطة: إسبنجية تقاوم الحرارة. الغرِت وفق FEPA P.`;
+      answer = `砥粒：酸化アルミニウム（汎用）、ジルコニアアルミナ（高硬度金属）、セラミック（高耐久）。基材：布（柔軟）、紙（寸法安定）、ポリマー（耐湿）。接着剤：耐熱性樹脂。砥粒グレードは FEPA P で指定。`;
       break;
     case 'application-guide':
-      answer = `التسلسل المعياري: درجة 60–80 (إزالة صدأ/طلاء/مادة) → 120–180 (تسوية) → 240–400 (تشطيب نهائي). للـ ${industry?.name} يضاف: تنظيف → فحص → تجهيز للدهان/الطلاء.`;
+      answer = `標準シークエンス：砥粒 60–80（錆・塗料・材料の除去）→ 120–180（平坦化）→ 240–400（最終仕上げ）。${industry?.name} では追加で：清掃 → 検査 → 塗装/コーティング準備。`;
       break;
     case 'process-tutorial':
-      answer = `الخطوات: 1) تنظيف القطعة 2) اختيار الغرِت الأول 3) ضبط سرعة/ضغط الماكينة 4) صنفرة بالتسلسل 5) تنظيف بين المراحل 6) فحص نهائي. المعلمات تختلف حسب المادة والماكينة.`;
+      answer = `手順：1) 部品の清掃 2) 最初の砥粒の選択 3) 機械の速度/圧力設定 4) 段階的なサンディング 5) 工程間の清掃 6) 最終検査。パラメータは材料と機械で変わります。`;
       break;
     case 'troubleshooting':
-      answer = `التآكل السريع → غرِت أدق أو ضغط أقل. الانسداد (Loading) → قاعدة شبكية أو مبرد. الانحراف → فحص بكرات الماكينة واتجاه الحزام. ضعف الشفط → تنظيف الفلاتر وخراطيم السحب.`;
+      answer = `摩耗が早い → 細い砥粒か圧力軽減。ローディング → メッシュディスクまたは冷却。偏位 → ローラーの調整とベルト方向の確認。集じん不足 → フィルターと吸い込み経路の清掃。`;
       break;
     case 'product-spec-detail':
-      answer = `${model?.name || productName}: ${model?.sizeAr || 'أبعاد متعددة'}، غرِت ${model?.gritRange.join('–') || 'حسب الطلب'}، قاعدة ${model?.backing || 'قماش/ورق/بوليمر'}، تثبيت ${model?.attachment || 'يُحدد مع الماكينة'}.`;
+      answer = `${model?.name || productName}: サイズ ${model?.sizeJa || '複数'}、砥粒 ${model?.gritRange.join('–') || 'お見積り対応'}、基材 ${model?.backing || '布/紙/ポリマー'}、取付 ${model?.attachment || '機械に依存'}。`;
       break;
     case 'procurement-guide':
-      answer = `المواصفة التقنية: المنتج، المقاس، الغرِت، القاعدة، التثبيت، الكمية، التغليف، وجهة الشحن. التقييم: السعر الشامل، المهلة، الشهادات، مرونة OEM، سجل التسليم. التعاقد: شروط الدفع، جزاءات التأخر، مواصفات الجودة.`;
+      answer = `技術仕様：製品、寸法、砥粒、基材、取付、数量、包装、出荷先。評価：総合価格、納期、証書、OEM柔軟性、納品実績。契約：決済条件、遅延ペナルティ、品質基準。`;
       break;
     case 'wholesale-oem-guide':
-      answer = `OEM يتطلب: ملف شعار فيكتور، رسومات تغليف، لغات الأسواق المستهدفة، مواصفات طباعة. الحد الأدنى للكمية يُحدد حسب المنتج والتخصيص. العينة تؤكد قبل الإنتاج الكمي.`;
+      answer = `OEMには：ベクトルロゴデータ、包装図面、ターゲット市場の言語、印刷仕様の確定が必要。MOQは製品とカスタマイズ内容で決まります。量産前にサンプルを承認します。`;
       break;
     case 'industry-market':
-      answer = `المعايير المحدثة (FEPA P، ISO 6344، SASO، ESMA) تشدد على اتساق الغرِت وانبعاثات الغبار. الاتجاه: حبيبات سيراميك/زركوريا للخدمة الشاقة، قواعد بوليمرية للبيئات الرطبة.`;
+      answer = `最新の規格（JIS、JANSI、ISO 6344、FEPA P）は砥粒の均一性と粉塵排出の厳格化を求めています。動向：高負荷向けセラミック/ジルコニアアルミナ砥粒、湿環境向けポリマー基材。`;
       break;
-    case 'gcc-regional-sourcing':
-      answer = `المتطلبات: شهادة مطابقة SASO (السعودية)/ESMA (الإمارات)/GSO (الخليج). الميناء الرئيسي: ${getMainPort(gccCountry?.code)}. مهلة بحري 25–35 يوم. الدفع: LC مستندي أو TT مسبق. لا وجود لمخزن محلي.`;
+    case 'jp-regional-sourcing':
+      answer = `必要事項：JIS/JANSI 規格適合の確認。主要港湾：${getMainPort(jaRegion?.code)}。海上 7–15 日。決済：LC（信用状）またはTT（前払い）。当地に在庫はありません。`;
       break;
     case 'faq-buyers-guide':
-      answer = `1) كيف أختار الغرِت؟ → مرحلة العمل تحدد. 2) ما الـ MOQ؟ → بالمواصفة. 3) مهلة التوريد؟ → تُحدد في عرض السعر. 4) هل تدعمون OEM؟ → نعم، بشروط. 5) كيف أطلب عرضاً؟ → نموذج الاستفسار مع المواصفة الكاملة.`;
+      answer = `1) 砥粒はどう選ぶ？→ 工程段階で決まります。2) MOQは？→ 仕様で決まります。3) 納期は？→ 見積りで確定します。4) OEM対応？→ 可能です、条件付き。5) 見積依頼は？→ 完全な仕様付きの見積依頼テンプレートを使用してください。`;
       break;
     default:
-      answer = `الجواب المباشر: ${productName} يُختار حسب المادة، المرحلة، والماكينة. التفاصيل في المقال.`;
+      answer = `直接回答：${productName} は材料、工程、機械に応じて選択します。詳細は記事内にあります。`;
   }
 
   return `
-<div class="direct-answer" style="background:#f5f8ff;border-right:4px solid #2563eb;padding:1rem;margin:1.5rem 0;border-radius:0 8px 8px 0;">
-  <strong>إجابة مباشرة:</strong> ${answer}
+<div class="direct-answer" style="background:#f5f8ff;border-left:4px solid #2563eb;padding:1rem;margin:1.5rem 0;border-radius:8px 0 0 8px;">
+  <strong>直接回答：</strong> ${answer}
 </div>`;
 }
 
@@ -449,317 +450,318 @@ function buildSection(
   model: typeof models[0] | null,
   productCat: typeof productCategories[0] | undefined,
   industry: typeof industries[0] | undefined,
-  gccCountry: typeof gccCountries[0] | undefined,
+  jaRegion: typeof jaRegions[0] | undefined,
   template: ArticleTemplate,
   idx: number
 ): string {
   let content = '';
   const type = topic.articleType;
 
-  // GCC Regional Sourcing - 精确逐节匹配
-  if (type === 'gcc-regional-sourcing') {
-    if (h2Title.includes('لوائح') || h2Title.includes('امتثال') || h2Title.includes('SASO') || h2Title.includes('ESMA') || h2Title.includes('GSO')) {
-      content = buildImportCompliance(gccCountry);
+  // JP Regional Sourcing - 精确逐节匹配
+  if (type === 'jp-regional-sourcing') {
+    if (h2Title.includes('法規制') || h2Title.includes('適合') || h2Title.includes('JIS') || h2Title.includes('JANSI')) {
+      content = buildImportCompliance(jaRegion);
     }
-    else if (h2Title.includes('لوجستيات') || h2Title.includes('موانئ') || h2Title.includes('التخليص') || h2Title.includes('مسارات')) {
-      content = buildLogisticsPorts(gccCountry);
+    else if (h2Title.includes('物流') || h2Title.includes('港湾') || h2Title.includes('通関') || h2Title.includes('ルート')) {
+      content = buildLogisticsPorts(jaRegion);
     }
-    else if (h2Title.includes('موزعين') || h2Title.includes('وكلاء') || h2Title.includes('نموذج الموزع')) {
-      content = buildDistributionModel(gccCountry);
+    else if (h2Title.includes('販売') || h2Title.includes('代理') || h2Title.includes('モデル')) {
+      content = buildDistributionModel(jaRegion);
     }
-    else if (h2Title.includes('أسعار الصرف') || h2Title.includes('طرق الدفع') || h2Title.includes('شروط التجارة')) {
-      content = buildPaymentTerms(gccCountry);
+    else if (h2Title.includes('決済') || h2Title.includes('取引条件')) {
+      content = buildPaymentTerms(jaRegion);
     }
-    else if (h2Title.includes('ثقافية') || h2Title.includes('تواصل') || h2Title.includes('نقاط ثقافية')) {
-      content = buildCulturalNotes(gccCountry);
+    else if (h2Title.includes('商務文化')) {
+      content = buildCulturalNotes(jaRegion);
     }
-    else if (h2Title.includes('إخلاء') || h2Title.includes('ما لا نلتزم') || h2Title.includes('مسؤولية')) {
-      content = buildDisclaimer(gccCountry);
+    else if (h2Title.includes('免責')) {
+      content = buildDisclaimer(jaRegion);
     }
   }
   // Industry Market - 精确逐节匹配
   else if (type === 'industry-market') {
-    if (h2Title.includes('خلفية') || h2Title.includes('عوامل') || h2Title.includes('محركات')) {
-      content = buildMarketContext(topic, industry, gccCountry);
+    if (h2Title.includes('背景') || h2Title.includes('推進')) {
+      content = buildMarketContext(topic, industry, jaRegion);
     }
-    else if (h2Title.includes('تحديثات') || h2Title.includes('معايير') || h2Title.includes('قراءة') || h2Title.includes('FEPA') || h2Title.includes('ISO') || h2Title.includes('SASO') || h2Title.includes('ESMA') || h2Title.includes('GSO')) {
-      content = buildStandardsAnalysis(topic, industry, gccCountry);
-    }    else if (h2Title.includes('حجم السوق') || h2Title.includes('بيانات') || h2Title.includes('نمو') || h2Title.includes('اقتباس')) {
-      content = buildMarketData(topic, industry, gccCountry);
+    else if (h2Title.includes('アップデート') || h2Title.includes('規格') || h2Title.includes('JIS') || h2Title.includes('JANSI') || h2Title.includes('FEPA') || h2Title.includes('ISO')) {
+      content = buildStandardsAnalysis(topic, industry, jaRegion);
     }
-    else if (h2Title.includes('اتجاهات تقنية') || h2Title.includes('ابتكار') || h2Title.includes('اتجاهات المنتج')) {
-      content = buildTechTrends(topic, industry, gccCountry);
+    else if (h2Title.includes('市場規模') || h2Title.includes('データ') || h2Title.includes('成長')) {
+      content = buildMarketData(topic, industry, jaRegion);
     }
-    else if (h2Title.includes('قرارات') || h2Title.includes('انعكاس') || h2Title.includes('مشتريات')) {
-      content = buildProcurementImplications(topic, industry, gccCountry);
+    else if (h2Title.includes('技術トレンド') || h2Title.includes('イノベーション')) {
+      content = buildTechTrends(topic, industry, jaRegion);
+    }
+    else if (h2Title.includes('調達') || h2Title.includes('判断')) {
+      content = buildProcurementImplications(topic, industry, jaRegion);
     }
   }
   // Procurement Guide - 精确逐节匹配
   else if (type === 'procurement-guide') {
-    if (h2Title.includes('منهجية') || h2Title.includes('5 خطوات') || h2Title.includes('خطوات التحديد')) {
+    if (h2Title.includes('手法') || h2Title.includes('5ステップ')) {
       content = buildDecisionGuide(topic, model, productCat, industry);
     }
-    else if (h2Title.includes('توحيد') || h2Title.includes('نموذج مواصفة') || h2Title.includes('نموذج طلب')) {
+    else if (h2Title.includes('統一') || h2Title.includes('テンプレート')) {
       content = buildProcurementTemplate(topic, model, productCat);
     }
-    else if (h2Title.includes('بطاقة تقييم') || h2Title.includes('عينات')) {
+    else if (h2Title.includes('サンプル評価') || h2Title.includes('カード')) {
       content = buildSampleEvaluation(topic, model, productCat);
     }
-    else if (h2Title.includes('مصفوفة تقييم') || h2Title.includes('موردين')) {
+    else if (h2Title.includes('評価マトリクス') || h2Title.includes('サプライヤー')) {
       content = buildSupplierMatrix(topic, model, productCat);
     }
-    else if (h2Title.includes('مقارنة') || h2Title.includes('عروض') || h2Title.includes('نقاط المقارنة')) {
+    else if (h2Title.includes('見積比較') || h2Title.includes('ポイント')) {
       content = buildQuoteComparison(topic, model, productCat);
     }
-    else if (h2Title.includes('فخاخ') || h2Title.includes('مصائد') || h2Title.includes('أخطاء')) {
+    else if (h2Title.includes('ミス') || h2Title.includes('回避')) {
       content = buildCommonMistakes(topic, model, productCat);
     }
-    else if (h2Title.includes('بنود') || h2Title.includes('عقود') || h2Title.includes('شروط التسليم')) {
+    else if (h2Title.includes('契約') || h2Title.includes('納品')) {
       content = buildContractTerms(topic, model, productCat);
     }
   }
   // Wholesale OEM Guide - 精确逐节匹配
   else if (type === 'wholesale-oem-guide') {
-    if (h2Title.includes('سير عمل') || h2Title.includes('نظرة عامة') || h2Title.includes('OEM')) {
+    if (h2Title.includes('工程') || h2Title.includes('概要') || h2Title.includes('OEM')) {
       content = buildOEMOverview(topic, model, productCat);
     }
-    else if (h2Title.includes('مصفوفة خيارات') || h2Title.includes('خيارات تخصيص')) {
+    else if (h2Title.includes('カスタマイズ') || h2Title.includes('オプション')) {
       content = buildOEMOptions(topic, model, productCat);
     }
-    else if (h2Title.includes('مواصفات تصميم') || h2Title.includes('التغليف') || h2Title.includes('العلامة التجارية')) {
+    else if (h2Title.includes('包装') || h2Title.includes('ブランド') || h2Title.includes('設計')) {
       content = buildPackagingSpecs(topic, model, productCat);
     }
-    else if (h2Title.includes('حد أدنى') || h2Title.includes('شرائح الأسعار') || h2Title.includes('MOQ')) {
+    else if (h2Title.includes('MOQ') || h2Title.includes('価格帯') || h2Title.includes('最小注文')) {
       content = buildMOQPricing(topic, model, productCat);
     }
-    else if (h2Title.includes('عملية تأكيد') || h2Title.includes('معايير تأكيد') || h2Title.includes('عينات')) {
+    else if (h2Title.includes('サンプル確認') || h2Title.includes('承認')) {
       content = buildSampleApproval(topic, model, productCat);
     }
-    else if (h2Title.includes('فحص الجودة') || h2Title.includes('معايير الاستلام') || h2Title.includes('فحص الجودة')) {
+    else if (h2Title.includes('品質検査') || h2Title.includes('受入')) {
       content = buildQAStandards(topic, model, productCat);
     }
-    else if (h2Title.includes('لوجستيات') || h2Title.includes('جمارك') || h2Title.includes('تنسيق')) {
+    else if (h2Title.includes('物流') || h2Title.includes('通関')) {
       content = buildLogisticsCustoms(topic, model, productCat);
     }
-    else if (h2Title.includes('إطار') || h2Title.includes('طويل الأمد') || h2Title.includes('شراكة') || h2Title.includes('إطار عمل')) {
+    else if (h2Title.includes('長期') || h2Title.includes('協業') || h2Title.includes('フレームワーク')) {
       content = buildPartnershipFramework(topic, model, productCat);
     }
   }
   // Application Guide - 精确逐节匹配
   else if (type === 'application-guide') {
-    if (h2Title.includes('نقاط الألم') || h2Title.includes('حلول') || h2Title.includes('نقاط الوجع')) {
+    if (h2Title.includes('課題') || h2Title.includes('ソリューション')) {
       content = buildPainPoints(topic, model, productCat, industry);
     }
-    else if (h2Title.includes('تفصيل') || h2Title.includes('عمليات') || h2Title.includes('مراحل العمل') || h2Title.includes('دورة العمل')) {
-      content = buildApplicationSection(topic, model, productCat, industry, gccCountry);
+    else if (h2Title.includes('工程') || h2Title.includes('ステップ') || h2Title.includes('プロセス')) {
+      content = buildApplicationSection(topic, model, productCat, industry, jaRegion);
     }
-    else if (h2Title.includes('تركيبة') || h2Title.includes('مجموعة المنتجات') || h2Title.includes('تسلسل الغرِت')) {
+    else if (h2Title.includes('製品構成') || h2Title.includes('砥粒シークエンス')) {
       content = buildProductCombo(topic, model, productCat, industry);
     }
-    else if (h2Title.includes('إعدادات') || h2Title.includes('معامل') || h2Title.includes('المعلمات')) {
+    else if (h2Title.includes('パラメータ') || h2Title.includes('設定')) {
       content = buildProcessParams(topic, model, productCat);
     }
-    else if (h2Title.includes('سلامة') || h2Title.includes('امتثال') || h2Title.includes('SASO') || h2Title.includes('ESMA') || h2Title.includes('GSO')) {
-      content = buildSafetyCompliance(topic, industry, gccCountry);
+    else if (h2Title.includes('安全') || h2Title.includes('コンプライアンス')) {
+      content = buildSafetyCompliance(topic, industry, jaRegion);
     }
-    else if (h2Title.includes('تكلفة') || h2Title.includes('تحسين') || h2Title.includes('مقايضة')) {
+    else if (h2Title.includes('コスト') || h2Title.includes('最適化') || h2Title.includes('トレードオフ')) {
       content = buildCostOptimization(topic, model, productCat);
     }
-    else if (h2Title.includes('نموذج مواصفة') || h2Title.includes('مشتريات')) {
+    else if (h2Title.includes('テンプレート') || h2Title.includes('調達')) {
       content = buildProcurementTemplate(topic, model, productCat);
     }
   }
   // Buying Guide - 精确逐节匹配
   else if (type === 'buying-guide') {
-    if (h2Title.includes('三步') || h2Title.includes('خطوات التحديد') || h2Title.includes('مخطط تدفق')) {
+    if (h2Title.includes('3ステップ') || h2Title.includes('判定フロー')) {
       content = buildDecisionGuide(topic, model, productCat, industry);
     }
-    else if (h2Title.includes('مقاييس') || h2Title.includes('المعالم الرئيسية') || h2Title.includes('المعايير الأساسية')) {
+    else if (h2Title.includes('判定基準') || h2Title.includes('テーブル')) {
       content = buildKeyParamsTable(topic, model, productCat);
     }
-    else if (h2Title.includes('تسلسل الغرِت') || h2Title.includes('حسب المادة') || h2Title.includes('توصيات')) {
+    else if (h2Title.includes('砥粒シークエンス') || h2Title.includes('材料') || h2Title.includes('推奨')) {
       content = buildGritSequenceTable(topic, model, productCat, industry);
     }
-    else if (h2Title.includes('兼容性') || h2Title.includes('兼容') || h2Title.includes('توافق') || h2Title.includes('قائمة تحقق')) {
+    else if (h2Title.includes('互換性') || h2Title.includes('チェック')) {
       content = buildCompatibilityChecklist(topic, model, productCat);
     }
-    else if (h2Title.includes('评估') || h2Title.includes('عينات') || h2Title.includes('معايير')) {
+    else if (h2Title.includes('評価') || h2Title.includes('サンプル')) {
       content = buildSampleEvaluation(topic, model, productCat);
     }
-    else if (h2Title.includes('معلومات') || h2Title.includes('طلب') || h2Title.includes('قبل العرض')) {
+    else if (h2Title.includes('情報') || h2Title.includes('依頼前')) {
       content = buildInquiryChecklist(topic, model, productCat);
     }
   }
   // Product Comparison
   else if (type === 'product-comparison') {
-    if (h2Title.includes('直接') || h2Title.includes('何时选') || h2Title.includes('متى تختار')) {
+    if (h2Title.includes('直接回答')) {
       content = buildComparisonDirectAnswer(topic, model, productCat);
     }
-    else if (h2Title.includes('差异') || h2Title.includes('فروقات') || h2Title.includes('对比') || h2Title.includes('核心差异')) {
+    else if (h2Title.includes('違い') || h2Title.includes('比較')) {
       content = buildComparisonTable(topic, model, productCat);
     }
-    else if (h2Title.includes('决策') || h2Title.includes('سيناريوهات التطبيق') || h2Title.includes('شجرة القرار') || h2Title.includes('السيناريو')) {
+    else if (h2Title.includes('判断') || h2Title.includes('フロー') || h2Title.includes('シナリオ')) {
       content = buildApplicationDecisionTree(topic, model, productCat, industry);
     }
-    else if (h2Title.includes('المعلمات') || h2Title.includes('المواصفات') || h2Title.includes('تحليل معمق') || h2Title.includes('المواصفات')) {
+    else if (h2Title.includes('パラメータ') || h2Title.includes('仕様') || h2Title.includes('分析')) {
       content = buildSpecsSection(topic, model, productCat);
     }
-    else if (h2Title.includes('误区') || h2Title.includes('错误') || h2Title.includes('أخطاء') || h2Title.includes('常见')) {
+    else if (h2Title.includes('ミス') || h2Title.includes('よくある')) {
       content = buildCommonMistakes(topic, model, productCat);
     }
-    else if (h2Title.includes('采购') || h2Title.includes('确认') || h2Title.includes('清单') || h2Title.includes('采购确认')) {
+    else if (h2Title.includes('調達') || h2Title.includes('確認') || h2Title.includes('チェック')) {
       content = buildProcurementChecklist(topic, model, productCat);
     }
   }
   // Multi Product Comparison
   else if (type === 'multi-product-comparison') {
-    if (h2Title.includes('一句话') || h2Title.includes('核心差异')) {
+    if (h2Title.includes('一言') || h2Title.includes('本質')) {
       content = buildComparisonDirectAnswer(topic, model, productCat);
     }
-    else if (h2Title.includes('矩阵') || h2Title.includes('多维度') || h2Title.includes('对比矩阵')) {
+    else if (h2Title.includes('マトリクス') || h2Title.includes('多次元')) {
       content = buildMultiComparisonMatrix(topic, model, productCat);
     }
-    else if (h2Title.includes('变体') || h2Title.includes('ظروف التشغيل') || h2Title.includes('كل متغير') || h2Title.includes('مناسب')) {
+    else if (h2Title.includes('バリアント') || h2Title.includes('作業条件')) {
       content = buildVariantDetails(topic, model, productCat);
     }
-    else if (h2Title.includes('الأداء') || h2Title.includes('التكلفة') || h2Title.includes('مقايضة') || h2Title.includes('مقايضة')) {
+    else if (h2Title.includes('性能') || h2Title.includes('コスト') || h2Title.includes('トレードオフ')) {
       content = buildCostPerformanceTradeoff(topic, model, productCat);
     }
-    else if (h2Title.includes('兼容') || h2Title.includes('ماكينة') || h2Title.includes('توافق')) {
+    else if (h2Title.includes('互換') || h2Title.includes('機械')) {
       content = buildMachineCompatibility(topic, model, productCat);
     }
-    else if (h2Title.includes('批量') || h2Title.includes('采购建议') || h2Title.includes('الجملة')) {
+    else if (h2Title.includes('大量') || h2Title.includes('購入')) {
       content = buildBulkProcurementAdvice(topic, model, productCat);
     }
   }
   // Technical Guide
   else if (type === 'technical-guide') {
-    if (h2Title.includes('3 句') || h2Title.includes('核心概念') || h2Title.includes('المفهوم')) {
+    if (h2Title.includes('核心概念')) {
       content = buildTechConceptSummary(topic, model, productCat);
     }
-    else if (h2Title.includes('原理') || h2Title.includes('深度') || h2Title.includes('技术原理') || h2Title.includes('تحليل')) {
+    else if (h2Title.includes('原理') || h2Title.includes('詳細分析')) {
       content = buildTechDeepDive(topic, model, productCat);
     }
-    else if (h2Title.includes('标准') || h2Title.includes('FEPA') || h2Title.includes('ANSI') || h2Title.includes('JIS') || h2Title.includes('مقارنة')) {
+    else if (h2Title.includes('規格') || h2Title.includes('JIS') || h2Title.includes('ANSI') || h2Title.includes('FEPA')) {
       content = buildStandardsComparison(topic, model, productCat);
     }
-    else if (h2Title.includes('参数') || h2Title.includes('影响') || h2Title.includes('性能') || h2Title.includes('كيف تؤثر')) {
+    else if (h2Title.includes('影響')) {
       content = buildParameterImpact(topic, model, productCat);
     }
-    else if (h2Title.includes('误区') || h2Title.includes('概念') || h2Title.includes('错误') || h2Title.includes('تفنيد')) {
+    else if (h2Title.includes('誤解') || h2Title.includes('解消')) {
       content = buildMythBusting(topic, model, productCat);
     }
-    else if (h2Title.includes('速查') || h2Title.includes('规格核对') || h2Title.includes('جدول مواصفات')) {
+    else if (h2Title.includes('クイック') || h2Title.includes('参考')) {
       content = buildSpecChecklist(topic, model, productCat);
     }
   }
   // Process Tutorial
   else if (type === 'process-tutorial') {
-    if (h2Title.includes('概览') || h2Title.includes('标准工序') || h2Title.includes('سير العملية')) {
+    if (h2Title.includes('全体像')) {
       content = buildProcessOverview(topic, model, industry);
     }
-    else if (h2Title.includes('分步') || h2Title.includes('步骤') || h2Title.includes('指南') || h2Title.includes('详细') || h2Title.includes('إجراء')) {
+    else if (h2Title.includes('段階') || h2Title.includes('オペレーション')) {
       content = buildProcessSteps(topic, model, productCat, industry);
     }
-    else if (h2Title.includes('递进') || h2Title.includes('序列') || h2Title.includes('تسلسل') || h2Title.includes('原则')) {
+    else if (h2Title.includes('シークエンス') || h2Title.includes('原理')) {
       content = buildGritProgressionTable(topic, model, industry);
     }
-    else if (h2Title.includes('控制') || h2Title.includes('质检') || h2Title.includes('关键点') || h2Title.includes('نقاط التحكم')) {
+    else if (h2Title.includes('管理') || h2Title.includes('検査')) {
       content = buildQualityControl(topic, model, industry);
     }
-    else if (h2Title.includes('缺陷') || h2Title.includes('对策') || h2Title.includes('عيوب') || h2Title.includes('工艺缺陷')) {
+    else if (h2Title.includes('不具合') || h2Title.includes('対策')) {
       content = buildDefectTroubleshooting(topic, model, industry);
     }
-    else if (h2Title.includes('材质') || h2Title.includes('调整') || h2Title.includes('不同材质') || h2Title.includes('نقاط الضبط')) {
+    else if (h2Title.includes('材料') || h2Title.includes('調整')) {
       content = buildMaterialAdjustments(topic, model, industry);
     }
-    else if (h2Title.includes('安全') || h2Title.includes('提示') || h2Title.includes('تنبيهات') || h2Title.includes('سلامة')) {
+    else if (h2Title.includes('安全')) {
       content = buildSafetyTips(topic, industry);
     }
   }
   // Troubleshooting
   else if (type === 'troubleshooting') {
-    if (h2Title.includes('速查') || h2Title.includes('表') || h2Title.includes('故障-原因') || h2Title.includes('العطل-السبب')) {
+    if (h2Title.includes('クイック') || h2Title.includes('テーブル')) {
       content = buildTroubleshootingTable(topic, model);
     }
-    else if (h2Title.includes('分类') || h2Title.includes('诊断') || h2Title.includes('逻辑') || h2Title.includes('تصنيف')) {
+    else if (h2Title.includes('分類') || h2Title.includes('診断')) {
       content = buildFailureClassification(topic, model);
     }
-    else if (h2Title.includes('逐项') || h2Title.includes('بالتفصيل') || h2Title.includes('كل حالة') || h2Title.includes('تحليل')) {
+    else if (h2Title.includes('詳細') || h2Title.includes('分析')) {
       content = buildRootCauseAnalysis(topic, model);
     }
-    else if (h2Title.includes('根因') || h2Title.includes('排查') || h2Title.includes('清单') || h2Title.includes('قائمة')) {
+    else if (h2Title.includes('根本') || h2Title.includes('チェック')) {
       content = buildRootCauseChecklist(topic, model);
     }
-    else if (h2Title.includes('预防') || h2Title.includes('维护') || h2Title.includes('الصيانة') || h2Title.includes('وقائية')) {
+    else if (h2Title.includes('予防') || h2Title.includes('整備')) {
       content = buildPreventiveMaintenance(topic, model);
     }
-    else if (h2Title.includes('支持') || h2Title.includes('联系') || h2Title.includes('تصعد') || h2Title.includes('何时')) {
+    else if (h2Title.includes('サポート') || h2Title.includes('相談')) {
       content = buildSupportEscalation();
     }
   }
   // Product Spec Detail
   else if (type === 'product-spec-detail') {
-    if (h2Title.includes('定位') || h2Title.includes('核心') || h2Title.includes('适用') || h2Title.includes('التموضع')) {
+    if (h2Title.includes('ポジショニング') || h2Title.includes('適用')) {
       content = buildProductPositioning(topic, model, productCat);
     }
-    else if (h2Title.includes('完整') || h2Title.includes('جميع المعلمات') || h2Title.includes('معاملات المواصفات') || h2Title.includes('المواصفات الكامل')) {
+    else if (h2Title.includes('完全') || h2Title.includes('仕様テーブル')) {
       content = buildFullSpecsTable(topic, model, productCat);
     }
-    else if (h2Title.includes('التصميم') || h2Title.includes('المبادئ') || h2Title.includes('الأداء') || h2Title.includes('مبادئ')) {
+    else if (h2Title.includes('設計') || h2Title.includes('原理') || h2Title.includes('特性')) {
       content = buildDesignPrinciples(topic, model, productCat);
     }
-    else if (h2Title.includes('التوافق') || h2Title.includes('طراز الماكينة') || h2Title.includes('التركيب') || h2Title.includes('الماكينات')) {
+    else if (h2Title.includes('対応') || h2Title.includes('機械') || h2Title.includes('取付')) {
       content = buildCompatibilityGuide(topic, model, productCat);
     }
-    else if (h2Title.includes('التخصيص') || h2Title.includes('درجات الغرِت') || h2Title.includes('الأبعاد') || h2Title.includes('القاعدة') || h2Title.includes('العلامة التجارية') || h2Title.includes('اختياري')) {
+    else if (h2Title.includes('カスタマイズ') || h2Title.includes('オプション')) {
       content = buildCustomizationOptions(topic, model, productCat);
     }
-    else if (h2Title.includes('الطلب') || h2Title.includes('MOQ') || h2Title.includes('مهلة التوريد') || h2Title.includes('التغليف') || h2Title.includes('معلومات الطلب')) {
+    else if (h2Title.includes('発注') || h2Title.includes('MOQ') || h2Title.includes('納期')) {
       content = buildOrderingInfo(topic, model, productCat);
     }
   }
   // FAQ Buyers Guide
   else if (type === 'faq-buyers-guide') {
-    if (h2Title.includes('3 个') || h2Title.includes('Top 3') || h2Title.includes('أهم 3')) {
+    if (h2Title.includes('3つの') || h2Title.includes('主要')) {
       content = buildTop3FAQ(topic, model, productCat);
     }
-    else if (h2Title.includes('مجمعة') || h2Title.includes('分组') || h2Title.includes('按主题')) {
-      content = '<p>الأسئلة أدناه مجمعة حسب المحور لتسهيل الوصول السريع.</p>';
+    else if (h2Title.includes('テーマ') || h2Title.includes('質問')) {
+      content = '<p>下の質問はテーマ別にグループ化されており、素早い参照が可能です。</p>';
     }
-    else if (h2Title.includes('决策') || h2Title.includes('参考') || h2Title.includes('جدول مرجعي')) {
+    else if (h2Title.includes('参考テーブル')) {
       content = buildDecisionReferenceTable(topic, model, productCat);
     }
-    else if (h2Title.includes('نموذج') || h2Title.includes('تحميل') || h2Title.includes('نموذج طلب') || h2Title.includes('استفسار')) {
+    else if (h2Title.includes('テンプレート') || h2Title.includes('見積')) {
       content = buildInquiryTemplate(topic);
     }
-    else if (h2Title.includes('术语') || h2Title.includes('速查') || h2Title.includes('مصطلحات') || h2Title.includes('بطاقة')) {
+    else if (h2Title.includes('用語') || h2Title.includes('カード')) {
       content = buildGlossaryCard(topic);
     }
-    else if (h2Title.includes('联系') || h2Title.includes('响应') || h2Title.includes('قنوات') || h2Title.includes('تواصل')) {
+    else if (h2Title.includes('連絡') || h2Title.includes('チャネル')) {
       content = buildContactInfo();
     }
   }
   // 其他类型的通用匹配
   else {
     // 通用规格表
-    if (h2Title.includes('规格') || h2Title.includes('参数') || h2Title.includes('مواصفات') || h2Title.includes('مقاييس') || h2Title.includes('المعايير')) {
+    if (h2Title.includes('仕様') || h2Title.includes('パラメータ')) {
       content = buildSpecsSection(topic, model, productCat);
     }
     // 通用应用
-    else if (h2Title.includes('应用') || h2Title.includes('场景') || h2Title.includes('工况') || h2Title.includes('تطبيقات') || h2Title.includes('دورة العمل')) {
-      content = buildApplicationSection(topic, model, productCat, industry, gccCountry);
+    else if (h2Title.includes('適用') || h2Title.includes('工程')) {
+      content = buildApplicationSection(topic, model, productCat, industry, jaRegion);
     }
     // 通用步骤
-    else if (h2Title.includes('步骤') || h2Title.includes('工序') || h2Title.includes('خطوات') || h2Title.includes('تسلسل') || h2Title.includes('إجراء')) {
+    else if (h2Title.includes('手順') || h2Title.includes('ステップ')) {
       content = buildProcessSteps(topic, model, productCat, industry);
     }
     // 通用安全
-    else if (h2Title.includes('安全') || h2Title.includes('合规') || h2Title.includes('سلامة') || h2Title.includes('تنبيهات') || h2Title.includes('标准')) {
-      content = buildSafetyCompliance(topic, industry, gccCountry);
+    else if (h2Title.includes('安全') || h2Title.includes('規格')) {
+      content = buildSafetyCompliance(topic, industry, jaRegion);
     }
     // 通用成本
-    else if (h2Title.includes('成本') || h2Title.includes('优化') || h2Title.includes('价格') || h2Title.includes('تكلفة') || h2Title.includes('تحسين')) {
+    else if (h2Title.includes('コスト') || h2Title.includes('最適化')) {
       content = buildCostOptimization(topic, model, productCat);
     }
   }
@@ -779,16 +781,16 @@ function buildTroubleshootingDetail(
   model: typeof models[0] | null,
   h2Title: string
 ): string {
-  if (h2Title.includes('تصنيف') || h2Title.includes('منطق')) {
+  if (h2Title.includes('分類')) {
     return buildComparisonTable(topic, model, undefined); // 复用表格结构做故障-原因-对策表
   }
-  if (h2Title.includes('تحليل') || h2Title.includes('أسباب')) {
+  if (h2Title.includes('分析')) {
     return buildRootCauseAnalysis(topic, model);
   }
-  if (h2Title.includes('وقائية')) {
+  if (h2Title.includes('予防')) {
     return buildPreventiveMaintenance(topic, model);
   }
-  if (h2Title.includes('تصعد') || h2Title.includes('دعم')) {
+  if (h2Title.includes('相談')) {
     return buildSupportEscalation();
   }
   return '';
@@ -800,19 +802,19 @@ function buildFAQBuyersDetail(
   model: typeof models[0] | null,
   h2Title: string
 ): string {
-  if (h2Title.includes('مجمعة')) {
-    return '<p>الأسئلة أدناه مجمعة حسب المحور لتسهيل الوصول السريع。</p>';
+  if (h2Title.includes('テーマ')) {
+    return '<p>下の質問はテーマ別にグループ化されており、素早い参照が可能です。</p>';
   }
-  if (h2Title.includes('قرارات')) {
+  if (h2Title.includes('判断')) {
     return buildDecisionGuide(topic, model, undefined, undefined);
   }
-  if (h2Title.includes('نموذج طلب')) {
+  if (h2Title.includes('テンプレート')) {
     return buildInquiryTemplate(topic);
   }
-  if (h2Title.includes('مصطلحات')) {
+  if (h2Title.includes('用語')) {
     return buildGlossaryCard(topic);
   }
-  if (h2Title.includes('تواصل')) {
+  if (h2Title.includes('連絡')) {
     return buildContactInfo();
   }
   return '';
@@ -823,16 +825,16 @@ function buildFAQBuyersDetail(
 function buildKeyParamsTable(topic: TopicSpec, model: typeof models[0] | null, productCat: typeof productCategories[0] | undefined): string {
   const productName = model?.name || productCat?.name || t(topic.productFamily);
   return `
-<h3>المقاييس الرئيسية لاختيار ${productName}</h3>
+<h3>${productName} 選択の主要基準</h3>
 <table class="spec-table">
-  <thead><tr><th>المقياس</th><th>الوصف</th><th>كيف تحدد</th></tr></thead>
+  <thead><tr><th>基準</th><th>内容</th><th>確定方法</th></tr></thead>
   <tbody>
-    <tr><td>مادة القطعة</td><td>خشب، معدن، بلاستيك، مركب</td><td>حدد المادة الأساسية</td></tr>
-    <tr><td>مرحلة العمل</td><td>إزالة / تشطيب / لمسة نهائية</td><td>الغرِت: 40–80 / 100–180 / 240+</td></tr>
-    <tr><td>نظام التثبيت</td><td>هوك آند لوب / PSA / شبكي</td><td>طابق مع قاعدة الماكينة</td></tr>
-    <tr><td>المقاس</td><td>طول×عرض (حزام) / قطر (قرص)</td><td>راجع دليل الماكينة</td></tr>
-    <tr><td>نوع الحبيبات</td><td>أكسيد ألومنيوم / زركونيا / سيراميك</td><td>حسب صلادة المادة</td></tr>
-    <tr><td>القاعدة</td><td>قماش / ورق / بوليمر</td><td>مرونة vs ثبات الأبعاد</td></tr>
+    <tr><td>加工材料</td><td>木、金属、プラスチック、複合材</td><td>材料を特定</td></tr>
+    <tr><td>工程</td><td>粗削り / 仕上げ / 最終</td><td>砥粒：40–80 / 100–180 / 240+</td></tr>
+    <tr><td>取付システム</td><td>フック&ループ / PSA / メッシュ</td><td>機械のベースと照合</td></tr>
+    <tr><td>寸法</td><td>長さ×幅（ベルト）/ 径（ディスク）</td><td>機械マニュアル参照</td></tr>
+    <tr><td>砥粒タイプ</td><td>酸化アルミニウム / ジルコニアアルミナ / セラミック</td><td>材料の硬度に応じて</td></tr>
+    <tr><td>基材</td><td>布 / 紙 / ポリマー</td><td>柔軟性と寸法安定性のバランス</td></tr>
   </tbody>
 </table>`;
 }
@@ -840,29 +842,29 @@ function buildKeyParamsTable(topic: TopicSpec, model: typeof models[0] | null, p
 function buildGritSequenceTable(topic: TopicSpec, model: typeof models[0] | null, productCat: typeof productCategories[0] | undefined, industry: typeof industries[0] | undefined): string {
   const industryName = industry?.name || '';
   return `
-<h3>تسلسل الغرِت المقترح لـ ${industryName}</h3>
+<h3>${industryName} の推奨砥粒シークエンス</h3>
 <table class="spec-table">
-  <thead><tr><th>المرحلة</th><th>الغرِت (FEPA P)</th><th>الهدف</th><th>ملاحظات</th></tr></thead>
+  <thead><tr><th>工程</th><th>砥粒（FEPA P）</th><th>目的</th><th>メモ</th></tr></thead>
   <tbody>
-    <tr><td>إزالة مادة/صدأ/طلاء</td><td>40 – 80</td><td>إنتاجية عالية، إزالة سريعة</td><td>زركونيا/سيراميك للمعدن</td></tr>
-    <tr><td>تشطيب متوسط</td><td>100 – 180</td><td>تسوية آثار المرحلة السابقة</td><td>أكسيد ألومنيوم عام</td></tr>
-    <tr><td>تشطيب ناعم</td><td>240 – 400</td><td>تحضير للدهان/الطلاء</td><td>تجنب اللمعان المفرط</td></tr>
-    <tr><td>لمسة نهائية</td><td>600 – 1500+</td><td>أسطح مرئية/دقيقة</td><td>للأثاث، السيارات، دقة</td></tr>
+    <tr><td>材料/錆/塗料の除去</td><td>40 – 80</td><td>高能率の除去</td><td>金属にはジルコニアアルミナ/セラミック</td></tr>
+    <tr><td>中間仕上げ</td><td>100 – 180</td><td>前工程の痕の平坦化</td><td>汎用の酸化アルミニウム</td></tr>
+    <tr><td>細目仕上げ</td><td>240 – 400</td><td>塗装準備</td><td>過度な光沢化を避ける</td></tr>
+    <tr><td>最終仕上げ</td><td>600 – 1500+</td><td>見える面/精密面</td><td>家具・自動車・精密加工</td></tr>
   </tbody>
 </table>`;
 }
 
 function buildCompatibilityChecklist(topic: TopicSpec, model: typeof models[0] | null, productCat: typeof productCategories[0] | undefined): string {
   return `
-<h3>قائمة تحقق توافق الماكينة</h3>
+<h3>機械互換性の確認チェックリスト</h3>
 <ul class="plain-links">
-  <li>☐ مقاس الحزام/القرص يطابق مواصفات الماكينة</li>
-  <li>☐ نظام التثبيت (هوك آند لوب / PSA / شبكي) متوافق مع القاعدة</li>
-  <li>☐ اتجاه دوران الحزام صحيح (للأحزمة)</li>
-  <li>☐ طريقة الوصل مناسبة (مستقيم/مائل/متداخل)</li>
-  <li>☐ سرعة الماكينة (RPM) ضمن حد المنتج</li>
-  <li>☐ نظام الشفط يتوافق مع نوع القرص (مثقوب/شبكي)</li>
-  <li>☐ وسادة التثبيت بحالة جيدة (خاصة هوك آند لوب)</li>
+  <li>☐ ベルト/ディスクの寸法が機械の仕様と一致</li>
+  <li>☐ 取付システム（フック&ループ / PSA / メッシュ）がベースと互換</li>
+  <li>☐ ベルトの回転方向が正しい（ベルトの場合）</li>
+  <li>☐ ジョイント方式が適切（ストレート/斜め/インターロック）</li>
+  <li>☐ 機械速度（RPM）が製品の限度内</li>
+  <li>☐ 集じんシステムがディスクタイプ（穴あき/メッシュ）と適合</li>
+  <li>☐ パッドの状態が良好（特にフック&ループ）</li>
 </ul>`;
 }
 
@@ -874,7 +876,7 @@ function buildComparisonDirectAnswer(topic: TopicSpec, model: typeof models[0] |
   const productName = model?.name || productCat?.name || t(topic.productFamily);
   const altProduct = getAlternativeProduct(topic.productFamily);
   return `
-<p>${productName} يناسب عند الحاجة إلى إزالة مادة سريعة/متوسطة مع تحكم في التشطيب على مساحات كبيرة بماكينات حزام/قرص. ${altProduct} يُختار للأماكن الضيقة، الماكينات غير المتوافقة، أو أعمال التفاصيل الدقيقة.</p>`;
+<p>${productName} は、広い面で仕上げを制御しながら材料を速く/中程度に除去する場合に適しています。${altProduct} は狭い場所、機械が合わない場合、細かな作業に向きます。</p>`;
 }
 
 function buildApplicationDecisionTree(topic: TopicSpec, model: typeof models[0] | null, productCat: typeof productCategories[0] | undefined, industry: typeof industries[0] | undefined): string {
@@ -908,7 +910,7 @@ function buildBulkProcurementAdvice(topic: TopicSpec, model: typeof models[0] | 
 function buildTechConceptSummary(topic: TopicSpec, model: typeof models[0] | null, productCat: typeof productCategories[0] | undefined): string {
   const productName = model?.name || productCat?.name || t(topic.productFamily);
   return `
-<p>${productName} يعتمد على ثلاثة عناصر أساسية: <strong>الحبيبات</strong> (أكسيد ألومنيوم، زركونيا، سيراميك) تحدد قدرة القطع، <strong>القاعدة</strong> (قماش، ورق، بوليمر) تحدد المرونة والثبات، <strong>الرابطة الإسفنجية</strong> تثبت الحبيبات وتقاوم الحرارة. درجة الغرِت وفق FEPA P تضمن الاتساق الدولي.</p>`;
+<p>${productName} は3つの基本要素で構成されます：<strong>砥粒</strong>（酸化アルミニウム、ジルコニアアルミナ、セラミック）が切削力を決まり、<strong>基材</strong>（布、紙、ポリマー）が柔軟性と寸法安定性を決まり、<strong>樹脂接着</strong>が砥粒を固定し耐熱性を確保します。砥粒グレードの FEPA P 表記が国際的な均一性を保証します。</p>`;
 }
 
 function buildTechDeepDive(topic: TopicSpec, model: typeof models[0] | null, productCat: typeof productCategories[0] | undefined): string {
@@ -917,33 +919,33 @@ function buildTechDeepDive(topic: TopicSpec, model: typeof models[0] | null, pro
 
 function buildStandardsComparison(topic: TopicSpec, model: typeof models[0] | null, productCat: typeof productCategories[0] | undefined): string {
   return `
-<h3>مقارنة منظومات معايير الغرِت</h3>
+<h3>砥粒規格体系の比較</h3>
 <table class="spec-table">
-  <thead><tr><th>FEPA P (أوروبي)</th><th>ANSI (أمريكي)</th><th>JIS (ياباني)</th><th>ملاحظات</th></tr></thead>
+  <thead><tr><th>JIS（日本）</th><th>FEPA P（欧州）</th><th>ANSI（米国）</th><th>メモ</th></tr></thead>
   <tbody>
-    <tr><td>P40</td><td>40</td><td>40</td><td>متطابقة تقريباً للدرجات الخشنة</td></tr>
-    <tr><td>P80</td><td>80</td><td>80</td><td></td></tr>
-    <tr><td>P120</td><td>120</td><td>120</td><td></td></tr>
-    <tr><td>P240</td><td>240</td><td>240</td><td>تبدأ الاختلافات في الدرجات الناعمة</td></tr>
-    <tr><td>P400</td><td>360</td><td>400</td><td>ANSI أدق برقم أقل</td></tr>
-    <tr><td>P800</td><td>600</td><td>800</td><td></td></tr>
-    <tr><td>P1200</td><td>800</td><td>1200</td><td>JIS أدق</td></tr>
+    <tr><td>40</td><td>P40</td><td>40</td><td>粗目はほぼ一致</td></tr>
+    <tr><td>80</td><td>P80</td><td>80</td><td></td></tr>
+    <tr><td>120</td><td>P120</td><td>120</td><td></td></tr>
+    <tr><td>240</td><td>P240</td><td>240</td><td>細目から差異が出てくる</td></tr>
+    <tr><td>400</td><td>P400</td><td>360</td><td>ANSIは小さい数字で細目</td></tr>
+    <tr><td>800</td><td>P800</td><td>600</td><td></td></tr>
+    <tr><td>1200</td><td>P1200</td><td>800</td><td>JIS/FEPAの方が細い</td></tr>
   </tbody>
 </table>
-<p><strong>قاعدة:</strong> التزم بمعيار واحد (FEPA P موصى به دولياً) في كل مواصفة. لا تخلط معايير في طلب واحد.</p>`;
+<p><strong>原則：</strong>すべての仕様で1つの規格体系（FEPA P が国際的に推奨）に統一してください。1つの依頼で規格を混在しないこと。</p>`;
 }
 
 function buildParameterImpact(topic: TopicSpec, model: typeof models[0] | null, productCat: typeof productCategories[0] | undefined): string {
   return `
-<h3>كيف تؤثر المعامل الرئيسية على الأداء</h3>
+<h3>主要パラメータが性能に与える影響</h3>
 <table class="spec-table">
-  <thead><tr><th>المعامل</th><th>زيادة القيمة</th><th>تقليل القيمة</th></tr></thead>
+  <thead><tr><th>パラメータ</th><th>値を大きくした影響</th><th>値を小さくした影響</th></tr></thead>
   <tbody>
-    <tr><td>رقم الغرِت (أدق)</td><td>تشطيب أنعم، إزالة أبطأ</td><td>إزالة أسرع، خدوش أعمق</td></tr>
-    <tr><td>ضغط التشغيل</td><td>قطع أسرع، حرارة أكثر، تآكل أسرع</td><td>قطع أبطأ، حرارة أقل، عمر أطول</td></tr>
-    <tr><td>سرعة الماكينة</td><td>إزالة أسرع، خطر حرق القطعة</td><td>تحكم أفضل، إزالة أبطأ</td></tr>
-    <tr><td>معدل التغذية</td><td>إنتاجية أعلى، تشطيب أخشن</td><td>تشطيب أنعم، وقت أطول</td></tr>
-    <tr><td>صلادة الحبيبات</td><td>عمر أطول للمواد الصلبة</td><td>تكلفة أقل، تكسر أسرع</td></tr>
+    <tr><td>砥粒（細目）</td><td>滑らかな仕上げ、除去速度低下</td><td>除去速度向上、深い傷</td></tr>
+    <tr><td>作業圧力</td><td>切削速くなる、発熱、摩耗加速</td><td>切削遅くなる、発熱減、寿命延長</td></tr>
+    <tr><td>機械速度</td><td>除去速くなる、焼き付きリスク</td><td>制御向上、除去遅くなる</td></tr>
+    <tr><td>送り速度</td><td>生産性向上、荒い仕上げ</td><td>滑らかな仕上げ、時間増加</td></tr>
+    <tr><td>砥粒の硬度</td><td>高硬度材料で寿命延長</td><td>コスト低、割れやすい</td></tr>
   </tbody>
 </table>`;
 }
@@ -959,8 +961,8 @@ function buildSpecChecklist(topic: TopicSpec, model: typeof models[0] | null, pr
 function buildProcessOverview(topic: TopicSpec, model: typeof models[0] | null, industry: typeof industries[0] | undefined): string {
   const industryName = industry?.name || '';
   return `
-<h3>نظرة عامة على العملية - ${industryName}</h3>
-<p>دورة الصنفرة القياسية تمر بـ 4 مراحل: التجهيز → الإزالة الخشنة → التسوية المتوسطة → التشطيب النهائي. كل مرحلة تتطلب غرِت محدد، ضبط معلمات الماكينة، وفحص جودة قبل الانتقال للمرحلة التالية.</p>`;
+<h3>工程概要 - ${industryName}</h3>
+<p>標準的なサンディング工程は4段階で進みます：準備 → 粗削り → 中間平坦化 → 最終仕上げ。各段階は指定砥粒、機械パラメータの調整、次段階前の品質検査が必要です。</p>`;
 }
 
 function buildGritProgressionTable(topic: TopicSpec, model: typeof models[0] | null, industry: typeof industries[0] | undefined): string {
@@ -969,44 +971,44 @@ function buildGritProgressionTable(topic: TopicSpec, model: typeof models[0] | n
 
 function buildQualityControl(topic: TopicSpec, model: typeof models[0] | null, industry: typeof industries[0] | undefined): string {
   return `
-<h3>نقاط التحكم الحرجة ومعايير الفحص</h3>
+<h3>重要管理点と検査基準</h3>
 <table class="spec-table">
-  <thead><tr><th>نقطة التحكم</th><th>المعيار</th><th>طريقة الفحص</th><th>التكرار</th></tr></thead>
+  <thead><tr><th>管理点</th><th>基準</th><th>検査方法</th><th>頻度</th></tr></thead>
   <tbody>
-    <tr><td>خشونة السطح (Ra)</td><td>حسب مواصفة الرسم</td><td>مقياس خشونة محمول</td><td>كل 50 قطعة</td></tr>
-    <tr><td>مظهر السطح</td><td>بدون خدوش عميقة/علامات</td><td>فحص بصري بإضاءة قياسية</td><td>كل قطعة</td></tr>
-    <tr><td>أبعاد القطعة</td><td>ضمن التسامح المسموح</td><td>مقياس شريطي/ميكروميتر</td><td>أول/آخر/كل دفعة</td></tr>
-    <tr><td>حالة الحزام/القرص</td><td>تآكل متساوٍ، بدون تلف</td><td>فحص بصري</td><td>كل تغيير غرِت</td></tr>
+    <tr><td>表面粗さ（Ra）</td><td>図面仕様に準拠</td><td>ポータブル粗さ計</td><td>50点ごとに</td></tr>
+    <tr><td>表面外観</td><td>深い傷/マークなし</td><td>標準照明での目視</td><td>全数</td></tr>
+    <tr><td>寸法</td><td>許容公差内</td><td>ノギス/マイクロメータ</td><td>初品/終品/ロットごと</td></tr>
+    <tr><td>ベルト/ディスク状態</td><td>摩耗均一、損傷なし</td><td>目視</td><td>砥粒交換時</td></tr>
   </tbody>
 </table>`;
 }
 
 function buildDefectTroubleshooting(topic: TopicSpec, model: typeof models[0] | null, industry: typeof industries[0] | undefined): string {
   return `
-<h3>عيوب التصنيع الشائعة وطرق المعالجة</h3>
+<h3>よくある製造不良と対策</h3>
 <table class="spec-table">
-  <thead><tr><th>العيب</th><th>السبب المحتمل</th><th>الإجراء التصحيحي</th></tr></thead>
+  <thead><tr><th>不良</th><th>考えられる原因</th><th>対策</th></tr></thead>
   <tbody>
-    <tr><td>خدوش عميقة/غير متساوية</td><td>غرِت خشن جداً، ضغط زائد، حزام تالف</td><td>انزل لغرِت أنعم، خفف الضغط، استبدل الحزام</td></tr>
-    <tr><td>لمعان/احتراق السطح</td><td>سرعة عالية، ضغط عالي، تبريد ضعيف</td><td>قلل RPM، خفف الضغط،حسن الشفط/التبريد</td></tr>
-    <tr><td>تشطيب غير موحد</td><td>حزام مائل، بكرات مهترئة، تغذية غير منتظمة</td><td>عدّل المحاذاة، استبدل البكرات، ثبت معدل التغذية</td></tr>
-    <tr><td>انسداد (Loading)</td><td>مادة لزجة، غرِت ناعم مبكراً، شفط ضعيف</td><td>نظف/استبدل، تسلسل غرِت صحيح، نظف الفلتر</td></tr>
+    <tr><td>深い傷/均一でない</td><td>砥粒が粗すぎる、圧力過大、ベルト破損</td><td>細い砥粒へ、圧力軽減、ベルト交換</td></tr>
+    <tr><td>光沢/焼き付き</td><td>高速度、高圧力、冷却不足</td><td>RPM下げ、圧力軽減、集じん/冷却改善</td></tr>
+    <tr><td>仕上げの不均一</td><td>ベルト偏位、ローラー劣化、送りが不規則</td><td>アライメント修正、ローラー交換、送りを一定に</td></tr>
+    <tr><td>ローディング</td><td>粘着材料、砥粒が細すぎる、集じん不足</td><td>清掃/交換、正しい砥粒シークエンス、フィルター清掃</td></tr>
   </tbody>
 </table>`;
 }
 
 function buildMaterialAdjustments(topic: TopicSpec, model: typeof models[0] | null, industry: typeof industries[0] | undefined): string {
   return `
-<h3>نقاط الضبط لمواد مختلفة</h3>
+<h3>材料別の調整ポイント</h3>
 <table class="spec-table">
-  <thead><tr><th>المادة</th><th>الحبيبات المفضلة</th><th>الغرِت الافتتاحي</th><th>الضغط/السرعة</th></tr></thead>
+  <thead><tr><th>材料</th><th>推奨砥粒</th><th>開始砥粒</th><th>圧力/速度</th></tr></thead>
   <tbody>
-    <tr><td>خشب ناعم</td><td>أكسيد ألومنيوم</td><td>80–100</td><td>ضغط خفيف، سرعة متوسطة</td></tr>
-    <tr><td>خشب صلب</td><td>أكسيد ألومنيوم/زركونيا</td><td>60–80</td><td>ضغط متوسط، سرعة متوسطة</td></tr>
-    <tr><td>فولاذ كربوني</td><td>زركونيا/سيراميك</td><td>40–60</td><td>ضغط متوسط-عالي، سرعة عالية</td></tr>
-    <tr><td>ستانلس ستيل</td><td>زركونيا/سيراميك</td><td>60–80</td><td>ضغط خفيف-متوسط، تبريد جيد</td></tr>
-    <tr><td>ألومنيوم</td><td>كربيد سيليكون (SiC)</td><td>80–120</td><td>ضغط خفيف، سرعة عالية</td></tr>
-    <tr><td>طلاء/ورنيش</td><td>أكسيد ألومنيوم/ستيرات</td><td>80–120</td><td>ضغط خفيف، شفط قوي</td></tr>
+    <tr><td>軟木</td><td>酸化アルミニウム</td><td>80–100</td><td>圧力軽く、速度中</td></tr>
+    <tr><td>硬木</td><td>酸化アルミニウム/ジルコニアアルミナ</td><td>60–80</td><td>圧力中、速度中</td></tr>
+    <tr><td>炭素鋼</td><td>ジルコニアアルミナ/セラミック</td><td>40–60</td><td>圧力中〜高、速度高</td></tr>
+    <tr><td>ステンレス</td><td>ジルコニアアルミナ/セラミック</td><td>60–80</td><td>圧力軽〜中、冷却良</td></tr>
+    <tr><td>アルミ</td><td>炭化シリコン（SiC）</td><td>80–120</td><td>圧力軽、速度高</td></tr>
+    <tr><td>塗料/ラッカー</td><td>酸化アルミニウム</td><td>80–120</td><td>圧力軽、強力集じん</td></tr>
   </tbody>
 </table>`;
 }
@@ -1018,215 +1020,215 @@ function buildSafetyTips(topic: TopicSpec, industry: typeof industries[0] | unde
 function buildTroubleshootingTable(topic: TopicSpec, model: typeof models[0] | null): string {
   const productName = model?.name || t(topic.productFamily);
   return `
-<h3>جدول سريع: العطل - السبب - الحل لـ ${productName}</h3>
+<h3>クイックテーブル：${productName} の不具合 - 原因 - 解決</h3>
 <table class="spec-table">
-  <thead><tr><th>العطل</th><th>السبب الرئيسي</th><th>الحل الفوري</th><th>الوقاية</th></tr></thead>
+  <thead><tr><th>不具合</th><th>主原因</th><th>即時対策</th><th>予防</th></tr></thead>
   <tbody>
-    <tr><td>تآكل سريع</td><td>غرِت ناعم جداً / ضغط عالي</td><td>اختر غرِت أخرش / خفف الضغط</td><td>تسلسل غرِت صحيح</td></tr>
-    <tr><td>انسداد (Loading)</td><td>مادة لزجة / شفط ضعيف</td><td>قرص شبكي / نظف الفلتر</td><td>شفط فعال، مبرد</td></tr>
-    <tr><td>انحراف الحزام</td><td>بكرات غير محاذية / وصل خاطئ</td><td>عدّل المحاذاة / راجع الوصل</td><td>صيانة بكرات أسبوعية</td></tr>
-    <tr><td>اهتزاز/ضجيج</td><td>حزام غير متوازن / بكرات تالفة</td><td>استبدل الحزام / البكرات</td><td>فحص بصري يومي</td></tr>
-    <tr><td>حرقة القطعة</td><td>RPM عالي / ضغط عالي / تبريد معدوم</td><td>قلل السرعة/الضغط / أضف مبرد</td><td>ضبط معلمات حسب المادة</td></tr>
+    <tr><td>摩耗が早い</td><td>砥粒が細すぎる / 圧力過大</td><td>粗い砥粒に変更 / 圧力軽減</td><td>正しい砥粒シークエンス</td></tr>
+    <tr><td>ローディング</td><td>粘着材料 / 集じん不足</td><td>メッシュディスク / フィルター清掃</td><td>有効な集じん、冷却</td></tr>
+    <tr><td>ベルト偏位</td><td>ローラーのズレ / ジョイント不良</td><td>アライメント調整 / ジョイント確認</td><td>ローラーの週次整備</td></tr>
+    <tr><td>振動/異音</td><td>ベルトの不均一 / ローラー破損</td><td>ベルト / ローラー交換</td><td>毎日の目視</td></tr>
+    <tr><td>焼き付き</td><td>高RPM / 高圧力 / 冷却なし</td><td>速度/圧力下げ / 冷却追加</td><td>材料に合わせたパラメータ設定</td></tr>
   </tbody>
 </table>`;
 }
 
 function buildFailureClassification(topic: TopicSpec, model: typeof models[0] | null): string {
   return `
-<h3>تصنيف مظاهر العطل ومنطق التشخيص</h3>
+<h3>不具合の分類と診断ロジック</h3>
 <ol class="numbered-list">
-  <li><strong>أعطال التآكل:</strong> تآكل مبكر، تآكل غير متساوٍ، فقدان الحبيبات → تحقق من الغرِت، الضغط، نوع الحبيبات</li>
-  <li><strong>أعطال الانسداد:</strong> Loading، سطح لامع، فقدان القطع → تحقق من الشفط، المادة، تسلسل الغرِت</li>
-  <li><strong>أعطال الميكانيكية:</strong> انحراف، اهتزاز، تمزق، كسر → تحقق من البكرات، المحاذاة، الوصل، RPM</li>
-  <li><strong>أعطال السطح:</strong> خدوش، حرق، موجة، تشطيب غير موحد → تحقق من تسلسل الغرِت، المعلمات، حالة الحزام</li>
-  <li><strong>أعطال السلامة:</strong> غبار زائد، شرر، شظايا → تحقق من PPE، الشفط، واقيات الماكينة، حالة المنتج</li>
+  <li><strong>摩耗系不具合：</strong>早期摩耗、摩耗不均一、砥粒の剥落 → 砥粒、圧力、砥粒タイプを確認</li>
+  <li><strong>付着系不具合：</strong>ローディング、表面光沢、切削力低下 → 集じん、材料、砥粒シークエンスを確認</li>
+  <li><strong>機械系不具合：</strong>偏位、振動、破れ、割れ → ローラー、アライメント、ジョイント、RPMを確認</li>
+  <li><strong>表面系不具合：</strong>傷、焼き付き、波打ち、均一でない仕上げ → 砥粒シークエンス、パラメータ、ベルト状態を確認</li>
+  <li><strong>安全系不具合：</strong>粉塵過多、火花、破片 → 保護具、集じん、機械ガード、製品状態を確認</li>
 </ol>`;
 }
 
 function buildRootCauseAnalysis(topic: TopicSpec, model: typeof models[0] | null): string {
   return `
-<h3>تحليل الأسباب الجذرية (أمثلة)</h3>
+<h3>根本原因分析（例）</h3>
 <table class="spec-table">
-  <thead><tr><th>العطل</th><th>السبب المباشر</th><th>السبب الجذري (5 Why's)</th><th>الإجراء التصحيحي</th></tr></thead>
+  <thead><tr><th>不具合</th><th>直接原因</th><th>根本原因（5Why）</th><th>対策</th></tr></thead>
   <tbody>
-    <tr><td>تآكل سريع</td><td>غرِت 120 لمرحلة إزالة</td><td>لم يحدد مرحلة العمل → لا يعرف تسلسل الغرِت → لا دليل متاح</td><td>وفر دليل تسلسل الغرِt، درّب المشغلين</td></tr>
-    <tr><td>انحراف متكرر</td><td>بكرة توجيه مهترئة</td><td>لا صيانة دورية → لا قائمة تحقق → لا مسؤولية محددة</td><td>أضف للبكرات في الصيانة الأسبوعية، عين مسؤول</td></tr>
-    <tr><td>انسداد مستمر</td><td>قرص غير مثقب لمادة لزجة</td><td>لم يطابق نوع القرص للمادة → لا مواصفة واضحة → افتراض خاطئ</td><td>أضف "نوع القرص" لنموذج RFQ، درّب المشتريات</td></tr>
+    <tr><td>摩耗が早い</td><td>除去工程で砥粒120使用</td><td>工程が未定義 → 砥粒シークエンス不明 → 案内資料なし</td><td>砥粒シークエンス表を提供しオペレーターを教育</td></tr>
+    <tr><td>偏位が繰り返す</td><td>ガイドローラーの劣化</td><td>定期整備なし → チェックリストなし → 責任者不明</td><td>ローラーを週次整備に追加し責任者を指定</td></tr>
+    <tr><td>ローディングが継続</td><td>粘着材料で穴あきなしディスク使用</td><td>ディスクタイプと材料の照合なし → 仕様不明 → 誤った前提</td><td>RFQテンプレートの「ディスクタイプ」欄を追加し調達を教育</td></tr>
   </tbody>
 </table>`;
 }
 
 function buildRootCauseChecklist(topic: TopicSpec, model: typeof models[0] | null): string {
   return `
-<h3>قائمة تحقق الأسباب الجذرية</h3>
+<h3>根本原因チェックリスト</h3>
 <ul class="plain-links">
-  <li>☐ هل الغرِت مطابق لمرحلة العمل؟</li>
-  <li>☐ هل نوع الحبيبات مناسب لمادة القطعة؟</li>
-  <li>☐ هل الضغط ضمن النطاق الموصى به (0.5–2 N/cm²)؟</li>
-  <li>☐ هل RPM الماكينة ضمن حد المنتج؟</li>
-  <li>☐ هل نظام الشفط يعمل بكفاءة؟ (تحقق فلاتر، تدفق هواء)</li>
-  <li>☐ هل البكرات/القاعدة نظيفة وفي حالة جيدة؟</li>
-  <li>☐ هل اتجاه الدوران/الوصل صحيح (للأحزمة)؟</li>
-  <li>☐ هل المشغل مدرب على تسلسل الغرِت؟</li>
-  <li>☐ هل البيئة (رطوبة/حرارة) تؤثر على القاعدة/الرابطة؟</li>
-  <li>☐ هل الدفعة الحالية مطابقة للمواصفة المرجعية؟</li>
+  <li>☐ 砥粒は工程と一致していますか？</li>
+  <li>☐ 砥粒タイプは加工材料に合っていますか？</li>
+  <li>☐ 圧力は推奨範囲（0.5–2 N/cm²）内ですか？</li>
+  <li>☐ 機械RPMは製品の限度内ですか？</li>
+  <li>☐ 集じんシステムは効果的ですか？（フィルター、気流を確認）</li>
+  <li>☐ ローラー/ベースは清潔で状態良好ですか？</li>
+  <li>☐ 回転方向/ジョイントは正しく（ベルト）？</li>
+  <li>☐ オペレーターは砥粒シークエンスを教育済みですか？</li>
+  <li>☐ 環境（湿度/温度）が基材/接着に影響していませんか？</li>
+  <li>☐ 現在のロットは基準仕様に合っていますか？</li>
 </ul>`;
 }
 
-function buildDistributionModel(gccCountry: typeof gccCountries[0] | undefined): string {
-  if (!gccCountry || gccCountry.code === 'general-gcc') return '';
+function buildDistributionModel(jaRegion: typeof jaRegions[0] | undefined): string {
+  if (!jaRegion || jaRegion.code === 'general-jp') return '';
   return `
-<h3>نموذج التوزيع في ${gccCountry.name}</h3>
+<h3>${jaRegion.name}地域の流通モデル</h3>
 <ul class="plain-links">
-  <li><strong>المستوردون المباشرون:</strong> شركات كبيرة تشتري حاويات كاملة، توزع على الموزعين المحليين</li>
-  <li><strong>الموزعون الصناعيون:</strong> يحملون مخزوناً، يخدمون الورش والمصانع، هامش 15–25%</li>
-  <li><strong>الوكلاء الحصريون:</strong> نادر، يتطلب التزام كميات كبيرة، تغطية وطنية</li>
-  <li><strong>التجارة الإلكترونية B2B:</strong> منصات مثل سوق، أمازون بيزنس، للطلبات الصغيرة</li>
+  <li><strong>直接輸入者：</strong>大型企業がフルコンテナを購入し、地域販売店に供給</li>
+  <li><strong>産業用品販売店：</strong>在庫を持ち、作業場と工場にサービス、マージン 15–25%</li>
+  <li><strong>専属代理店：</strong>稀。大口の数量コミットと全国カバーが必要</li>
+  <li><strong>B2B EC：</strong>少量注文向けのプラットフォーム</li>
 </ul>
-<p>موتاى تتعامل مباشرة مع المستوردين والموزعين الكبار. لا مانع من العمل عبر وكيل محلي إذا رغب المشتري.</p>`;
+<p>墨泰は直接に輸入者と大型販売店と取引します。買い手が希望すれば、地域代理店経由での取引も可能です。</p>`;
 }
 
-function buildPaymentTerms(gccCountry: typeof gccCountries[0] | undefined): string {
-  if (!gccCountry || gccCountry.code === 'general-gcc') return '';
+function buildPaymentTerms(jaRegion: typeof jaRegions[0] | undefined): string {
+  if (!jaRegion || jaRegion.code === 'general-jp') return '';
   return `
-<h3>شروط الدفع والعملات في ${gccCountry.name}</h3>
+<h3>${jaRegion.name}地域の決済条件と通貨</h3>
 <table class="spec-table">
-  <thead><tr><th>الطريقة</th><th>الشائع</th><th>ملاحظات</th></tr></thead>
+  <thead><tr><th>方法</th><th>一般的</th><th>メモ</th></tr></thead>
   <tbody>
-    <tr><td>LC مستندي (اعتماد)</td><td>الأكثر أماناً</td><td>مطلوب للطلبات > $50k، بنوك الخليج تقبل</td></tr>
-    <tr><td>TT مسبق 30%</td><td>شائع</td><td>باقي 70% قبل الشحن أو مقابل مستندات</td></tr>
-    <tr><td>TT 100% مسبق</td><td>للطلبات الصغيرة</td><td>أقل من $10k، يبسط الإجراءات</td></tr>
-    <tr><td>عملة الفاتورة</td><td>USD</td><td>ثابتة، تجنب تقلبات العملات المحلية</td></tr>
+    <tr><td>LC（信用状）</td><td>最も安全</td><td>5万ドル以上の発注に必須、日本の銀行が受け入れ可</td></tr>
+    <tr><td>TT 前払い30%</td><td>一般的</td><td>残り70%は出荷前または書類提示時</td></tr>
+    <tr><td>TT 100%前払い</td><td>小口注文向け</td><td>1万ドル未満、手続き簡素化</td></tr>
+    <tr><td>請求通貨</td><td>USD / JPY</td><td>固定化し、為替変動リスクを回避</td></tr>
   </tbody>
 </table>
-<p>نوصي بـ LC للطلبات الأولى والكبرى، TT للطلبات المتكررة مع شركاء موثوقين.</p>`;
+<p>初回注文と大口にはLCを、信頼できるパートナーとの定期注文にはTTを推奨します。</p>`;
 }
 
-function buildMarketContext(topic: TopicSpec, industry: typeof industries[0] | undefined, gccCountry: typeof gccCountries[0] | undefined): string {
+function buildMarketContext(topic: TopicSpec, industry: typeof industries[0] | undefined, jaRegion: typeof jaRegions[0] | undefined): string {
   const industryName = industry?.name || '';
-  const countryName = gccCountry?.name || 'الخليج';
+  const regionName = jaRegion?.name || '日本';
   return `
-<h3>خلفية قطاع ${industryName} في ${countryName}</h3>
-<p>القطاع مدفوع بـ: المشاريع الحكومية الضخمة (رؤية 2030 السعودية، مشاريع إكسبو الإمارات، كأس العالم قطر)، نمو التصنيع المحلي، واستبدال الواردات. الطلب على مواد التشطيب الصناعية ينمو 6–8% سنوياً.</p>`;
+<h3>${regionName}の${industryName}業界背景</h3>
+<p>業界の推進要因：製造業の自動化・高度化、インフラ維持・更新、生産性向上への投資。産業用仕上げ材料の需要は年率 3–5% で成長しています。</p>`;
 }
 
 /**
- * 进口合规（地域寻源篇专用）：按目的国给出真实的监管机构与合规要点，
+ * 进口合规（地域寻源篇专用）：按目的地域给出真实的监管机构与合规要点，
  * 替代原先误路由的 PPE 安全清单（该清单与进口法规主题无关，属灌水）。
- * 数据全部来自 prompts_ar_gulf.md 第 7 节限定的权威机构（SASO/ESMA/GSO/GSO 各国分支）。
+ * 数据基于日本市场：JIS/JANSI 規格体系 + 通関・関税法務 + 表示義務。
  */
-function buildImportCompliance(gccCountry: typeof gccCountries[0] | undefined): string {
-  if (!gccCountry || gccCountry.code === 'general-gcc') return '';
+function buildImportCompliance(jaRegion: typeof jaRegions[0] | undefined): string {
+  if (!jaRegion || jaRegion.code === 'general-jp') return '';
   const info: Record<string, { regulator: string; cert: string; points: string[] }> = {
-    'saudi-arabia': {
-      regulator: 'SASO (الهيئة السعودية للمواصفات والمقاييس والجودة)',
-      cert: 'شهادة مطابقة SASO (SALEEM/SABER)',
+    'kanto': {
+      regulator: 'JIS / JANSI（日本産業規格 / 日本耐水紙工業会）',
+      cert: '適合証明書（COC）/ 分析証明書（COA）',
       points: [
-        'تسجيل المنتج في منصة SABER قبل الشحن، مع إرفاق تقرير اختبار من مختبر معتمد',
-        'ملصق المنتج بالعربية إلزامي، يتضمن العلامات التجارية وبيانات المستورد السعودي',
-        'شهادة منشأ (COO) من الغرفة التجارية في مقاطعة هوبي، الصين، موثقة',
+        'JIS 規格に準拠した砥粒グレード（JIS R 6001 等）で納品、ロットごとの COA 同封',
+        '製品表示は日本語で必須：品名・寸法・砥粒グレード・JIS適合マーク・製造元・輸入者名',
+        '輸入者名の表示は関税法務（不正表示防止）の観点から必須、日本国内の取扱い会社を特定',
       ],
     },
-    'uae': {
-      regulator: 'ESMA (هيئة الإمارات للمواصفات والمقاييس)',
-      cert: 'شهادة مطابقة ESMA (ECAS)',
+    'kansai': {
+      regulator: 'JIS / JANSI（日本産業規格 / 日本耐水紙工業会）',
+      cert: '適合証明書（COC）/ 分析証明書（COA）',
       points: [
-        'تسجيل المنتج في نظام ECAS قبل الاستيراد، مع إرفاق تقرير فحص من مختبر معتمد من MoIAT',
-        'الملصق يجب أن يكون ثنائي اللغة (عربي/إنجليزي) مع رمز ECAS',
-        'شهادة منشأ (COO) موثقة من الغرفة التجارية في هوبي',
+        '造船・海洋業界の多い関西では溶接面処理・防食塗装前の表面準備基準（JIS Z 2372 等）が参考になる',
+        'ロットごとの寸法公差と砥粒分布を示す検査記録の提出を推奨',
+        '表示は日本語で統一、ロット番号と製造日を必ず明記',
       ],
     },
-    'qatar': {
-      regulator: 'Qatar Standards / وزارة التجارة والصناعة (MoCI)',
-      cert: 'شهادة مطابقة مواصفات GSO',
+    'tohoku': {
+      regulator: 'JIS / JANSI（日本産業規格 / 日本耐水紙工業会）',
+      cert: '適合証明書（COC）/ 分析証明書（COA）',
       points: [
-        'المنتجات الصناعية تخضع لمواصفات GSO الموحدة؛ الجمارك يتطلب شهادة مطابقة',
-        'شهادة المنشأ (COO) معتمدة من الغرفة التجارية الصينية، وشهادة تحليل (COA) من المصنع',
-        'الملصق بالعربية أو ثنائي اللغة، مع رقم الدفعة (Batch No.) ورمز الاستيراد',
+        'JIS 準拠の砥粒グレードで納品、ロットごとの COA 同封',
+        '寒冷期の保管で接着剥離を防ぐための保管条件の明記',
+        '表示は日本語で統一、ロット番号と製造日を必ず明記',
       ],
     },
-    'kuwait': {
-      regulator: 'Kuwait Conformity Assessment (KOWSAR) / الهيئة العامة للصناعة',
-      cert: 'شهادة مطابقة KOWSAR',
+    'chubu': {
+      regulator: 'JIS / JANSI（日本産業規格 / 日本耐水紙工業会）',
+      cert: '適合証明書（COC）/ 分析証明書（COA）',
       points: [
-        'المنتجات المقننة تخضع لبرنامج تقييم المطابقة KUCAS قبل الشحن',
-        'تقرير اختبار من مختبر معتمد، وشهادة منشأ موثقة',
-        'الملصق بالعربية مع بيانات المستورد الكويتي',
+        '自動車産業の多い中部（愛知）では、板金・塗装ライン向けの寸法公差管理が重視される',
+        'ロットごとの寸法公差と砥粒分布を示す検査記録の提出を推奨',
+        '表示は日本語で統一、ロット番号と製造日を必ず明記',
       ],
     },
-    'bahrain': {
-      regulator: 'Bahrain Standards & Metrology (BSMD)',
-      cert: 'شهادة مطابقة وفق مواصفات GSO',
+    'chugoku': {
+      regulator: 'JIS / JANSI（日本産業規格 / 日本耐水紙工業会）',
+      cert: '適合証明書（COC）/ 分析証明書（COA）',
       points: [
-        'المنتجات تخضع لمواصفات GSO/BSMD؛ الجمارك تطلب شهادة مطابقة عند التخليص',
-        'شهادة المنشأ + تقرير تحليل من مختبر معتمد',
-        'الملصق بالعربية، مع بيانات المستورد المحلي',
+        'JIS 準拠の砥粒グレードで納品、ロットごとの COA 同封',
+        '表示は日本語で統一、ロット番号と製造日を必ず明記',
+        '通関書類（インボイス、パッキングリスト、原産国表示）の事前準備',
       ],
     },
-    'oman': {
-      regulator: 'DGSSM (المديرية العامة للمواصفات والمقاييس) - عُمان',
-      cert: 'شهادة مطابقة Oman',
+    'kyushu': {
+      regulator: 'JIS / JANSI（日本産業規格 / 日本耐水紙工業会）',
+      cert: '適合証明書（COC）/ 分析証明書（COA）',
       points: [
-        'المنتجات المقننة تخضع لطلب شهادة مطابقة عُمان',
-        'شهادة المنشأ + COA، والملصق بالعربية',
-        'تسجيل في نظام MoCI Oman قبل الاستيراد',
+        'JIS 準拠の砥粒グレードで納品、ロットごとの COA 同封',
+        '北九州・福岡の造船・海洋産業向けに溶接ビード処理仕様を事前確認',
+        '表示は日本語で統一、ロット番号と製造日を必ず明記',
       ],
     },
   };
-  const inf = info[gccCountry.code];
+  const inf = info[jaRegion.code];
   if (!inf) return '';
   return `
-<h3>الجهة المنظمة ومتطلبات الامتثال في ${gccCountry.name}</h3>
-<p>الجهة المختصة: <strong>${inf.regulator}</strong>. الشهادة المطلوبة: <strong>${inf.cert}</strong>.</p>
+<h3>${jaRegion.name}地域の規制と適合要件</h3>
+<p>管轄： <strong>${inf.regulator}</strong>。必要な証書：<strong>${inf.cert}</strong>。</p>
 <ul class="plain-links">
   ${inf.points.map(p => `<li>${p}</li>`).join('\n  ')}
 </ul>
-<p>نحن في MoTai نوفر شهادة مطابقة المصنع (COC) وشهادة تحليل (COA) لكل دفعة. <strong>الامتثال النهائي في بلد الوجهة مسؤولية المستورد</strong>؛ ونحن نتعاون بتقديم الوثائق المطلوبة.</p>`;
+<p>墨泰では全ロットで工場適合証書（COC）と分析証明書（COA）を提供します。<strong>輸入国の最終適合は輸入者の責任です</strong>。当社では提出書類の準備に協力します。</p>`;
 }
 
 /**
- * 行业/市场篇的标准与合规解读：泛海湾版给出 GSO 统一框架，
- * 国家主版（qatar 等）给出该国监管机构的具体要求（复用地域寻源的合规数据）。
+ * 行业/市场篇的标准与合规解读：全国版给出 JIS/JANSI 统一框架，
+ * 地域主版给出该地区监管机构的具体要求（复用地域寻源的合规数据）。
  */
-function buildStandardsAnalysis(topic: TopicSpec, industry: typeof industries[0] | undefined, gccCountry: typeof gccCountries[0] | undefined): string {
-  if (gccCountry && gccCountry.code !== 'general-gcc') {
-    return buildImportCompliance(gccCountry);
+function buildStandardsAnalysis(topic: TopicSpec, industry: typeof industries[0] | undefined, jaRegion: typeof jaRegions[0] | undefined): string {
+  if (jaRegion && jaRegion.code !== 'general-jp') {
+    return buildImportCompliance(jaRegion);
   }
   return `
-<h3>الإطار المعياري العام في الخليج (GSO)</h3>
+<h3>日本の規格体系（JIS/JANSI）</h3>
 <ul class="plain-links">
-  <li><strong>FEPA P:</strong> نظام درجات الغرِت الأوروبي السائد، يُستخدم كمرجع أساسي في المواصفات الدولية</li>
-  <li><strong>ISO 6344:</strong> تحليل حجم حبيبات الغرِت، يضمن اتساق الدقة عبر الموردين</li>
-  <li><strong>GSO:</strong> المواصفات الخليجية الموحدة، تُطبق في جميع دول مجلس التعاون</li>
-  <li><strong>OSHA 1910.215 / NIOSH:</strong> مرجعية دولية للسلامة المهنية في عمليات الصنفرة</li>
+  <li><strong>JIS R 6001：</strong>砥粒の粒度区分、日本国内の規格適合の基準</li>
+  <li><strong>JANSI：</strong>耐水紙工業会規格、湿潤研磨材の適合基準</li>
+  <li><strong>FEPA P / ISO 6344：</strong>国際的な砥粒粒度分析基準、クロスボーダー取引での参照</li>
+  <li><strong>労働安全衛生法：</strong>粉じん作業の管理基準、集じん設備の要件</li>
 </ul>
-<p>الخلاصة: اكتب أي مواصفة بمعايير FEPA P + GSO، وأضف متطلبات البلد الوجهة عند التعاقد.</p>`;
+<p>要約：仕様は JIS または FEPA P のいずれか1つの体系で記載し、契約時に輸入国特有の要件を追加します。</p>`;
 }
 
-function buildMarketData(topic: TopicSpec, industry: typeof industries[0] | undefined, gccCountry: typeof gccCountries[0] | undefined): string {
+function buildMarketData(topic: TopicSpec, industry: typeof industries[0] | undefined, jaRegion: typeof jaRegions[0] | undefined): string {
   return `
-<h3>بيانات السوق (مرجع عام)</h3>
+<h3>市場データ（概算）</h3>
 <ul class="plain-links">
-  <li>حجم سوق المواد الكاشطة في الخليج: ~$1.2B سنوياً (تقديرات 2023–2024)</li>
-  <li>معدل النمو السنوي المركب (CAGR): 6–8% حتى 2028</li>
-  <li>الحصة الأكبر: أحزمة وأقراص الصنفرة (~55%)، ثم فلب ديسك (~25%)</li>
-  <li>المستوردون الرئيسيون: الصين، ألمانيا، إيطاليا، كوريا، الولايات المتحدة</li>
+  <li>日本の研磨材市場規模：年間 約500億円規模（概算 2023–2024）</li>
+  <li>年率成長率（CAGR）：2028年まで 2–4%</li>
+  <li>最大のシェア：サンディングディスク（約45%）、次はフラップディスク（約25%）</li>
+  <li>主要輸入元：日本、米国、ドイツ、韓国、中国</li>
 </ul>
-<p><em>المصادر: تقارير فروست آند سوليفان، يورومونيتور، غرف التجارة الخليجية. الأرقام تقديرية وتختلف حسب المصدر.</em></p>`;
+<p><em>出典：業界レポート、商工会議所の統計。数値は概算で、出典によって異なります。</em></p>`;
 }
 
-function buildTechTrends(topic: TopicSpec, industry: typeof industries[0] | undefined, gccCountry: typeof gccCountries[0] | undefined): string {
-  return buildMarketTrends(topic, industry, gccCountry);
+function buildTechTrends(topic: TopicSpec, industry: typeof industries[0] | undefined, jaRegion: typeof jaRegions[0] | undefined): string {
+  return buildMarketTrends(topic, industry, jaRegion);
 }
 
-function buildProcurementImplications(topic: TopicSpec, industry: typeof industries[0] | undefined, gccCountry: typeof gccCountries[0] | undefined): string {
+function buildProcurementImplications(topic: TopicSpec, industry: typeof industries[0] | undefined, jaRegion: typeof jaRegions[0] | undefined): string {
   return `
-<h3>الانعكاس على قرارات المشتريات</h3>
+<h3>調達判断への影響</h3>
 <ul class="plain-links">
-  <li>المعايير الأشد → اطلب شهادات مطابقة حديثة (COC/COA) مع كل دفعة</li>
-  <li>الحبيبات عالية الأداء → احسب تكلفة المتر المربع لا سعر الوحدة</li>
-  <li>الأتمتة → حدد تماسك الأبعاد في المواصفة (تحمل ±0.5 مم)</li>
-  <li>الاستدامة → استفسر عن قواعد قابلة لإعادة التدوير، حبيبات منخفضة الانبعاثات</li>
+  <li>規格の厳密化 → 全ロットで COC/COA の提出を依頼</li>
+  <li>高性能砥粒 → 単価ではなく平方メートル単価で計算</li>
+  <li>自動化 → 仕様で寸法公差（±0.5 mm）を明確化</li>
+  <li>サステナビリティ → リサイクル可能な基材、低排出砥粒への関心</li>
 </ul>`;
 }
 
@@ -1236,81 +1238,81 @@ function buildOEMOverview(topic: TopicSpec, model: typeof models[0] | null, prod
 
 function buildPackagingSpecs(topic: TopicSpec, model: typeof models[0] | null, productCat: typeof productCategories[0] | undefined): string {
   return `
-<h3>مواصفات تصميم التغليف بالعلامة التجارية</h3>
+<h3>ブランド包装の設計仕様</h3>
 <ul class="plain-links">
-  <li><strong>الملفات:</strong> شعار فيكتور (AI/SVG/EPS)، رسومات تغليف بأبعاد دقيقة، ألوان بانتون</li>
-  <li><strong>اللغات:</strong> عربي، إنجليزي، وأي لغات أسواق مستهدفة (نصوص معتمدة من العميل)</li>
-  <li><strong>الطباعة:</strong> فليكسو/أوفست، عدد الألوان، مساحات الطباعة، حدود القطع</li>
-  <li><strong>الباركود:</strong> GS1-128 أو EAN-13، ملف CSV ببيانات المنتج</li>
-  <li><strong>المواد:</strong> كرتون مموج (أحمال)، أكياس PE (وحدات)، ملصقات مقاومة زيت/رطوبة</li>
+  <li><strong>ファイル：</strong>ベクトルロゴ（AI/SVG/EPS）、正確な寸法の包装図面、Pantone カラーコード</li>
+  <li><strong>言語：</strong>日本語、英語、ターゲット市場の言語（クライアント承認済みテキスト）</li>
+  <li><strong>印刷：</strong>フレキソ/オフセット、色数、印刷面、トリムライン</li>
+  <li><strong>バーコード：</strong>JAN/GS1-128、製品データのCSVファイル</li>
+  <li><strong>素材：</strong>段ボール（ケース用）、PE 袋（個包装用）、耐油/耐湿ラベル</li>
 </ul>`;
 }
 
 function buildMOQPricing(topic: TopicSpec, model: typeof models[0] | null, productCat: typeof productCategories[0] | undefined): string {
   return `
-<h3>الحد الأدنى للكمية وشرائح الأسعار (إرشادي)</h3>
+<h3>最小注文数量と価格帯（参考）</h3>
 <table class="spec-table">
-  <thead><tr><th>فئة المنتج</th><th>MOQ قياسي</th><th>MOQ مع OEM</th><th>شرائح الكمية النموذجية</th></tr></thead>
+  <thead><tr><th>製品カテゴリ</th><th>標準MOQ</th><th>OEM付きMOQ</th><th>典型数量帯</th></tr></thead>
   <tbody>
-    <tr><td>أحزمة صنفرة</td><td>500–1000 وحدة</td><td>2000–5000 وحدة</td><td>1000 / 5000 / 10000 / 50000</td></tr>
-    <tr><td>أقراص صنفرة</td><td>2000–5000 وحدة</td><td>5000–10000 وحدة</td><td>5000 / 10000 / 50000 / 100000</td></tr>
-    <tr><td>فلب ديسك</td><td>1000–2000 وحدة</td><td>3000–5000 وحدة</td><td>2000 / 5000 / 10000 / 20000</td></tr>
-    <tr><td>إسفنج صنفرة</td><td>3000–5000 وحدة</td><td>5000–10000 وحدة</td><td>5000 / 10000 / 20000 / 50000</td></tr>
+    <tr><td>サンディングベルト</td><td>500–1000本</td><td>2000–5000本</td><td>1000 / 5000 / 10000 / 50000</td></tr>
+    <tr><td>サンディングディスク</td><td>2000–5000枚</td><td>5000–10000枚</td><td>5000 / 10000 / 50000 / 100000</td></tr>
+    <tr><td>フラップディスク</td><td>1000–2000枚</td><td>3000–5000枚</td><td>2000 / 5000 / 10000 / 20000</td></tr>
+    <tr><td>サンディングスポンジ</td><td>3000–5000枚</td><td>5000–10000枚</td><td>5000 / 10000 / 20000 / 50000</td></tr>
   </tbody>
 </table>
-<p><em>الأرقام إرشادية. MOQ النهائي يعتمد على المقاس، الغرِت، التخصيص، والتغليف. اطلب عرضاً دقيقاً.</em></p>`;
+<p><em>数値は参考値です。最終MOQは寸法、砥粒、カスタマイズ、包装で決まります。正確なお見積りを依頼してください。</em></p>`;
 }
 
 function buildSampleApproval(topic: TopicSpec, model: typeof models[0] | null, productCat: typeof productCategories[0] | undefined): string {
   return `
-<h3>عملية تأكيد العينة</h3>
+<h3>サンプル確認工程</h3>
 <ol class="numbered-list">
-  <li>العميل يرسل: ملفات الشعار/التغليف + مواصفة المنتج الكاملة</li>
-  <li>ننتج عينة أولية (5–10 وحدات) خلال 10–15 يوم عمل</li>
-  <li>العميل يفحص: أبعاد، طباعة، ألوان، جودة صنفرة، تغليف</li>
-  <li>تعديلات (إن وجدت) → عينة ثانية خلال 5–7 أيام</li>
-  <li>توقيع "موافقة عينة" رسمي → بدء الإنتاج الكمي</li>
-  <li>مهلة الإنتاج: تُحدد في عرض السعر حسب الكمية والتعقيد</li>
+  <li>クライアントが提出：ロゴ/包装ファイル + 完全な製品仕様</li>
+  <li>初期サンプルを製造（5–10点）、10–15営業日</li>
+  <li>クライアント検査：寸法、印刷、カラー、サンディング品質、包装</li>
+  <li>修正がある場合 → 5–7日で再サンプル</li>
+  <li>「サンプル承認」の書面確認 → 量産開始</li>
+  <li>生産リードタイムは数量と複雑度で見積りで確定</li>
 </ol>
-<p>معايير القبول: مطابقة المواصفة التقنية ± التسامح، جودة طباعة مقبولة، لا عيوب مرئية.</p>`;
+<p>受入基準：技術仕様の公差内、印刷品質が合格、外観不良なし。</p>`;
 }
 
 function buildQAStandards(topic: TopicSpec, model: typeof models[0] | null, productCat: typeof productCategories[0] | undefined): string {
   return `
-<h3>معايير فحص الجودة والاستلام</h3>
+<h3>品質検査と受入基準</h3>
 <table class="spec-table">
-  <thead><tr><th>معيار الفحص</th><th>طريقة الاختبار</th><th>معيار القبول</th></tr></thead>
+  <thead><tr><th>検査項目</th><th>試験方法</th><th>受入基準</th></tr></thead>
   <tbody>
-    <tr><td>الأبعاد</td><td>مقياس شريطي/ميكروميتر، عينة عشوائية 5%</td><td>± التسامح المحدد في المواصفة</td></tr>
-    <tr><td>درجة الغرِت</td><td>محلل حبيبات (FEPA P) أو مرجع معتمد</td><td>ضمن نطاق FEPA للدرجة المعلنة</td></tr>
-    <tr><td>المظهر السطحي</td><td>فحص بصري بإضاءة 1000 لوكس</td><td>لا خدوش، لا فقاعات، لا تلوث</td></tr>
-    <tr><td>قوة الرابطة</td><td>اختبار قص/تقشير قياسي</td><td>≥ القيمة الدنيا للمواصفة</td></tr>
-    <tr><td>الطباعة/التغليف</td><td>مطابقة عينة الموافقة الموقعة</td><td>متطابقة 100%</td></tr>
+    <tr><td>寸法</td><td>ノギス/マイクロメータ、ランダム5%</td><td>仕様の公差内</td></tr>
+    <tr><td>砥粒グレード</td><td>砥粒分析（FEPA P）または承認基準</td><td>FEPA の銘示グレード範囲内</td></tr>
+    <tr><td>表面外観</td><td>1000ルクス照明での目視</td><td>傷・ブツ・汚れなし</td></tr>
+    <tr><td>接着強度</td><td>標準引離/剥離試験</td><td>仕様最低値以上</td></tr>
+    <tr><td>印刷/包装</td><td>承認サンプルとの照合</td><td>100%一致</td></tr>
   </tbody>
 </table>`;
 }
 
 function buildLogisticsCustoms(topic: TopicSpec, model: typeof models[0] | null, productCat: typeof productCategories[0] | undefined): string {
   return `
-<h3>تنسيق اللوجستيات والجمارك</h3>
+<h3>物流と通関</h3>
 <ul class="plain-links">
-  <li><strong>الشحن البحري:</strong> FCL للحاويات الكاملة، LCL للكميات الأقل. الميناء: نينغبو/شانغهاي → ميناء الخليج</li>
-  <li><strong>المستندات:</strong> بوليصة شحن، فاتورة تجارية، قائمة تعبئة، شهادة منشأ، COC، COA، شهادة مطابقة محلية</li>
-  <li><strong>التخليص:</strong> وكيل شحن المشتري يتولى. نقدم جميع المستندات قبل وصول السفينة بـ 7 أيام</li>
-  <li><strong>التأمين:</strong> CIF: المشتري يؤمن. CFR/FOB: نؤمن حتى الميناء. نوصي بتأمين شامل</li>
-  <li><strong>التسليم النهائي:</strong> إلى مستودع المشتري أو ميناء الوصول وفق INCOTERMS المتفق عليها</li>
+  <li><strong>海上輸送：</strong>フルコンテナはFCL、少量はLCL。出港：寧波/上海 → 日本の港</li>
+  <li><strong>書類：</strong>船荷証券、インボイス、パッキングリスト、原産国証明、COC、COA</li>
+  <li><strong>通関：</strong>買い手の通関業者が処理。当社では船舶到着7日前までに全書類を提供</li>
+  <li><strong>保険：</strong>CIF：買い手が保険加入。CFR/FOB：当社が港まで保険加入。全損保険を推奨</li>
+  <li><strong>最終納品：</strong>合意した INCOTERMS に基づき買い手の倉庫または到着港へ</li>
 </ul>`;
 }
 
 function buildPartnershipFramework(topic: TopicSpec, model: typeof models[0] | null, productCat: typeof productCategories[0] | undefined): string {
   return `
-<h3>إطار مقترح للتعاون طويل الأمد</h3>
+<h3>長期協業フレームワーク</h3>
 <ul class="plain-links">
-  <li><strong>اتفاقية إطارية:</strong> 1–3 سنوات، كميات مقدرة، أسعار مراجعة نصف سنوية</li>
-  <li><strong>تخطيط الطلب:</strong> توقعات ربع سنوية قبل 8 أسابيع، أوامر مؤكدة قبل 4 أسابيع</li>
-  <li><strong>مخزون أمان:</strong> نحد 2–4 أسابيع استهلاك كمخزون جاهز للشحن الفوري</li>
-  <li><strong>مراجعة الأداء:</strong> ربع سنوية: OTIF، جودة، استجابة، ابتكار</li>
-  <li><strong>تطوير مشترك:</strong> منتجات جديدة، تحسين مواصفات، اختبارات مواد</li>
+  <li><strong>基本契約：</strong>1–3年、数量予測、半年ごとの価格見直し</li>
+  <li><strong>調達計画：</strong>四半期ごとの予測を8週間前、確定注文を4週間前</li>
+  <li><strong>安全在庫：</strong>2–4週の消費量を出荷可能な在庫として維持</li>
+  <li><strong>パフォーマンスレビュー：</strong>四半期ごと：OTIF、品質、対応、イノベーション</li>
+  <li><strong>共同開発：</strong>新製品、仕様改善、材料試験</li>
 </ul>`;
 }
 
@@ -1318,15 +1320,15 @@ function buildPainPoints(topic: TopicSpec, model: typeof models[0] | null, produ
   const industryName = industry?.name || '';
   // 行业痛点优先用 site.ts 已验证的 challenges；无数据行业回落通用痛点
   const painItems = industry?.challenges?.length
-    ? industry.challenges.map(ch => `<li><strong>${ch}:</strong> ${model?.name || productCat?.name || t(topic.productFamily)} بتسلسل غرِت موحد وعينات مرجعية → اتساق النتائج وتقليل إعادة العمل</li>`)
+    ? industry.challenges.map(ch => `<li><strong>${ch}：</strong> ${model?.name || productCat?.name || t(topic.productFamily)} で統一された砥粒シークエンスと基準サンプル → 均一な結果と再作業の削減</li>`)
     : [
-        '<li><strong>تشتت جودة التشطيب:</strong> تسلسل غرِت موحد + عينات مرجعية → اتساق بين الدفعات</li>',
-        '<li><tt>توقف الماكينة المتكرر:</strong> أحزمة/أقراص بعمر أطول + صيانة وقائية → توفر أعلى</li>',
-        '<li><strong>اختيار الغرِت الخاطئ:</strong> دليل تسلسل + استشارة فنية → قرار صحيح من المرة الأولى</li>',
-        '<li><strong>تكلفة الوحدة المرتفعة:</strong> حساب TCO (سعر + عمر + توقف) → قرار اقتصادي حقيقي</li>',
+        '<li><strong>仕上げ品質のばらつき：</strong> 統一された砥粒シークエンス + 基準サンプル → ロット間の均一性</li>',
+        '<li><strong>機械の頻繁な停止：</strong> 長寿命のベルト/ディスク + 予防整備 → 稼働率向上</li>',
+        '<li><strong>砥粒の誤選択：</strong> シークエンスガイド + 技術相談 → 初回で正しい判断</li>',
+        '<li><strong>単位コストが高い：</strong> TCO（価格+寿命+停止）の計算 → 経済的な判断</li>',
       ];
   return `
-<h3>نقاط الألم في ${industryName} وحلول ${model?.name || productCat?.name || t(topic.productFamily)}</h3>
+<h3>${industryName} の課題と ${model?.name || productCat?.name || t(topic.productFamily)} による解決</h3>
 <ul class="plain-links">
   ${painItems.join('\n  ')}
 </ul>`;
@@ -1338,92 +1340,92 @@ function buildProductCombo(topic: TopicSpec, model: typeof models[0] | null, pro
 
 function buildProcessParams(topic: TopicSpec, model: typeof models[0] | null, productCat: typeof productCategories[0] | undefined): string {
   return `
-<h3>إعدادات المعامل التشغيلية المقترحة</h3>
+<h3>推奨作業パラメータ</h3>
 <table class="spec-table">
-  <thead><tr><th>المعلمة</th><th>النطاق المقترح</th><th>تنبيه</th></tr></thead>
+  <thead><tr><th>パラメータ</th><th>推奨範囲</th><th>注意</th></tr></thead>
   <tbody>
-    <tr><td>السرعة (حزام)</td><td>15–30 م/ث</td><td>لا تتجاوز حد المنتج</td></tr>
-    <tr><td>السرعة (قرص)</td><td>وفق قطر القرص و RPM الماكينة</td><td>تحقق من الملصق</td></tr>
-    <tr><td>الضغط</td><td>0.5–2 N/cm²</td><td>ضغط زائد = تآكل + حرارة</td></tr>
-    <tr><td>معدل التغذية</td><td>3–8 م/دقيقة</td><td>حسب المادة والنتيجة</td></tr>
+    <tr><td>速度（ベルト）</td><td>15–30 m/s</td><td>製品限度を超えない</td></tr>
+    <tr><td>速度（ディスク）</td><td>ディスク径と機械RPMに応じて</td><td>ラベルを確認</td></tr>
+    <tr><td>圧力</td><td>0.5–2 N/cm²</td><td>圧力過大 = 摩耗 + 発熱</td></tr>
+    <tr><td>送り速度</td><td>3–8 m/分</td><td>材料と結果に応じて</td></tr>
   </tbody>
 </table>`;
 }
 
 function buildSampleEvaluation(topic: TopicSpec, model: typeof models[0] | null, productCat: typeof productCategories[0] | undefined): string {
   return `
-<h3>بطاقة تقييم العينة</h3>
+<h3>サンプル評価カード</h3>
 <table class="spec-table">
-  <thead><tr><th>المعيار</th><th>الوزن</th><th>طريقة التقييم</th><th>الدرجة المستهدفة</th></tr></thead>
+  <thead><tr><th>基準</th><th>重み</th><th>評価方法</th><th>目標値</th></tr></thead>
   <tbody>
-    <tr><td>مطابقة المواصفة التقنية</td><td>30%</td><td>قياس أبعاد، غرِت، مادة</td><td>100% مطابقة</td></tr>
-    <tr><td>أداء القطع/التشطيب</td><td>25%</td><td>اختبار على قطعة تمثيلية</td><td>≥ المعيار المرجعي</td></tr>
-    <tr><td>العمر الافتراضي</td><td>20%</td><td>تشغيل حتى التآكل الكامل</td><td>≥ 90% عمر المرجع</td></tr>
-    <tr><td>اتساق الدفعة</td><td>15%</td><td>فحص 5 قطع من مواقع مختلفة</td><td>CV ≤ 5%</td></tr>
-    <tr><td>التغليف/الملصقات</td><td>10%</td><td>فحص بصري، مسح باركود</td><td>صفر أخطاء</td></tr>
+    <tr><td>技術仕様の適合</td><td>30%</td><td>寸法、砥粒、材料の測定</td><td>100%適合</td></tr>
+    <tr><td>切削/仕上げ性能</td><td>25%</td><td>代表部品での試験</td><td>基準値以上</td></tr>
+    <tr><td>寿命</td><td>20%</td><td>完全摩耗まで運転</td><td>基準寿命の90%以上</td></tr>
+    <tr><td>ロット均一性</td><td>15%</td><td>異なる位置の5点検査</td><td>CV ≤ 5%</td></tr>
+    <tr><td>包装/ラベル</td><td>10%</td><td>目視、バーコードスキャン</td><td>不良ゼロ</td></tr>
   </tbody>
 </table>`;
 }
 
 function buildSupplierMatrix(topic: TopicSpec, model: typeof models[0] | null, productCat: typeof productCategories[0] | undefined): string {
   return `
-<h3>مصفوفة تقييم الموردين</h3>
+<h3>サプライヤー評価マトリクス</h3>
 <table class="spec-table">
-  <thead><tr><th>المعيار</th><th>الوزن</th><th>مصدر التقييم</th></tr></thead>
+  <thead><tr><th>基準</th><th>重み</th><th>評価情報源</th></tr></thead>
   <tbody>
-    <tr><td>السعر الشامل (CIF/CFR)</td><td>25%</td><td>العروض الرسمية</td></tr>
-    <tr><td>الجودة (نسبة العيوب، اتساق)</td><td>25%</td><td>عينات، مراجع، شهادات</td></tr>
-    <tr><td>مهلة التوريد والموثوقية (OTIF)</td><td>20%</td><td>سجل تاريخي، مراجع</td></tr>
-    <tr><td>مرونة OEM/تخصيص</td><td>10%</td><td>قدرات مصنعية، أمثلة سابقة</td></tr>
-    <tr><td>الشهادات والامتثال</td><td>10%</td><td>ISO 9001، COC، COA، محلية</td></tr>
-    <tr><td>الخدمة الفنية والدعم</td><td>10%</td><td>استجابة، خبرة، لغة</td></tr>
+    <tr><td>総合価格（CIF/CFR）</td><td>25%</td><td>正式な見積書</td></tr>
+    <tr><td>品質（不良率、均一性）</td><td>25%</td><td>サンプル、参考顧客、証書</td></tr>
+    <tr><td>納期と信頼性（OTIF）</td><td>20%</td><td>実績、参考顧客</td></tr>
+    <tr><td>OEM/カスタマイズの柔軟性</td><td>10%</td><td>製造能力、過去の実績</td></tr>
+    <tr><td>証書と適合</td><td>10%</td><td>ISO 9001、COC、COA、地域要件</td></tr>
+    <tr><td>技術サポート</td><td>10%</td><td>対応速度、経験、言語</td></tr>
   </tbody>
 </table>`;
 }
 
 function buildQuoteComparison(topic: TopicSpec, model: typeof models[0] | null, productCat: typeof productCategories[0] | undefined): string {
   return `
-<h3>نقاط المقارنة الجوهرية في العروض</h3>
+<h3>見積比較の重要ポイント</h3>
 <ul class="plain-links">
-  <li><strong>السعر الأساسي:</strong> لكل وحدة، بالعملة المتفق عليها، يشمل/لا يشمل التغليف</li>
-  <li><strong>الشحن والتأمين:</strong> CIF (للميناء)، CFR، FOB، أو EXW — قارن على أساس موحد</li>
-  <li><strong>شروط الدفع:</strong> LC/TT، نسب المقدمة، آجال، عملة الفاتورة</li>
-  <li><strong>مهلة التوريد:</strong> من اعتماد المواصفة/العينة إلى التسليم في الميناء/المستودع</li>
-  <li><strong>الحد الأدنى للطلب:</strong> MOQ لكل منتج/غرِت، مرونة خلط الأصناف</li>
-  <li><strong>الضمان والجودة:</strong> سياسة الإرجاع، استبدال الدفعات المعيبة، شهادات مع كل شحنة</li>
-  <li><strong>دعم OEM:</strong> تكلفة القوالب، لوحات الطباعة، حد أدنى للتخصيص</li>
+  <li><strong>基本価格：</strong>単位ごとの合意通貨、包装込み/外しを明記</li>
+  <li><strong>輸送・保険：</strong> CIF（港）、CFR、FOB、EXW — 統一基準で比較</li>
+  <li><strong>決済条件：</strong> LC/TT、前払比率、期限、通貨</li>
+  <li><strong>納期：</strong> 仕様/サンプル承認から港/倉庫納品まで</li>
+  <li><strong>最小発注数量：</strong> 製品/砥粒別のMOQ、品種混合の柔軟性</li>
+  <li><strong>保証と品質：</strong> 返品ポリシー、不良ロット交換、全荷物の証書</li>
+  <li><strong>OEM対応：</strong> モールド費用、印刷プレート、カスタマイズの最低条件</li>
 </ul>`;
 }
 
 function buildContractTerms(topic: TopicSpec, model: typeof models[0] | null, productCat: typeof productCategories[0] | undefined): string {
   return `
-<h3>بنود العقود وشروط التسليم الأساسية</h3>
+<h3>契約条項と納品条件</h3>
 <ul class="plain-links">
-  <li><strong>INCOTERMS:</strong> حدد بوضوح (CIF، CFR، FOB، EXW) — يحدد مسؤولية الشحن والتأمين</li>
-  <li><strong>جدول التسليم:</strong> تواريخ/أشهر، كميات لكل دفعة، مرونة ±10%</li>
-  <li><strong>شروط الدفع:</strong> LC غير قابل للإلغاء، TT 30/70، عملة، بنك مستفيد</li>
-  <li><strong>فحص الجودة:</strong> في المصنع (قبل الشحن) و/أو عند الوصول، معايير القبول، إجراءات الرفض</li>
-  <li><strong>جزاءات التأخر:</strong> 0.5–1% من قيمة الدفعة لكل أسبوع تأخير، سقف 5–10%</li>
-  <li><strong>قوة قاهرة:</strong> تعريف، إشعار، تمديد آجال، حق إنهاء</li>
-  <li><strong>السرية/الملكية الفكرية:</strong> رسومات، شعارات، مواصفات — ملكية العميل، عدم إفشاء</li>
-  <li><strong>القانون الحاكم والاختصاص:</strong> قانون الصين / دولة المشتري، تحكيم (CIETAC / محلي)</li>
+  <li><strong>INCOTERMS：</strong> 明記（CIF、CFR、FOB、EXW）— 輸送と保険の責任を確定</li>
+  <li><strong>納品スケジュール：</strong> 月、ロットごとの数量、±10%の柔軟性</li>
+  <li><strong>決済条件：</strong> 失効不能LC、TT 30/70、通貨、受取銀行</li>
+  <li><strong>品質検査：</strong> 工場内（出荷前）と/または到着時、受入基準、拒否手順</li>
+  <li><strong>遅延ペナルティ：</strong> ロット金額の週あたり 0.5–1%、上限 5–10%</li>
+  <li><strong>不可抗力：</strong> 定義、通知、期限延長、解除権</li>
+  <li><strong>秘密保持/知的財産：</strong> 図面、ロゴ、仕様 — クライアント所有、秘匿義務</li>
+  <li><strong>適用法と管轄：</strong> 中国法 / 買い手国法、仲裁（CIETAC / 国内）</li>
 </ul>`;
 }
 
 function buildCommonMistakes(topic: TopicSpec, model: typeof models[0] | null, productCat: typeof productCategories[0] | undefined): string {
   const productName = model?.name || productCat?.name || t(topic.productFamily);
   return `
-<h3>أخطاء شائعة وكيفية تجنبها</h3>
+<h3>よくあるミスと回避法</h3>
 <table class="spec-table">
-  <thead><tr><th>الخطأ</th><th>النتيجة</th><th>التصحيح</th></tr></thead>
+  <thead><tr><th>ミス</th><th>結果</th><th>修正</th></tr></thead>
   <tbody>
-    <tr><td>اختيار الغرِت بالحدس لا بمرحلة العمل</td><td>إما إزالة بطيئة أو خدوش عميقة</td><td>اتبع التسلسل: خشن → متوسط → ناعم</td></tr>
-    <tr><td>تجاهل توافق الماكينة (المقاس/التثبيت)</td><td>منتج لا يركب أو يتلف الماكينة</td><td>أرسل طراز الماكينة وطريقة الوصل قبل الطلب</td></tr>
-    <tr><td>ضغط زائد "للإنجاز أسرع"</td><td>تآكل متسارع، حرارة، تشوه القطعة</td><td>دع الحبيبات تعمل، ضغط معتدل ثابت</td></tr>
-    <tr><td>إهمال سحب الغبار</td><td>انسداد (Loading)، عمر قصير، بيئة غير صحية</td><td>نظف الفلاتر يومياً، تحقق من تدفق الهواء</td></tr>
-    <tr><td>خلط معايير الغرِت (FEPA/ANSI/JIS)</td><td>درجات غير متطابقة بين الدفعات</td><td>التزم بمعيار واحد (FEPA P) في كل المواصفات</td></tr>
-    <tr><td>طلب كمية كبيرة دون عينة</td><td>مخاطر عدم مطابقة للجودة/الأبعاد</td><td>اطلب عينة، افحص، وقع موافقة، ثم اطلب الكمي</td></tr>
-    <tr><td>عدم تحديد OEM/التغليف مبكراً</td><td>تأخير الإنتاج، تكاليف تعديل عالية</td><td>أرفق ملفات العلامة مع RFQ الأولي</td></tr>
+    <tr><td>砥粒を直感で選定</td><td>除去が遅いか深い傷</td><td>シークエンスに沿う：粗 → 中 → 細</td></tr>
+    <tr><td>機械互換性を見落とし（寸法/取付）</td><td>製品が取り付けられないか機械を損傷</td><td>発注前に機械タイプとジョイント方式を送信</td></tr>
+    <tr><td>「早く終わらせたい」で圧力過大</td><td>摩耗加速、発熱、部品変形</td><td>砥粒に仕事をさせ、一定の適度な圧力</td></tr>
+    <tr><td>集じんを怠る</td><td>ローディング、寿命短縮、健康リスク</td><td>毎日フィルター清掃、気流を確認</td></tr>
+    <tr><td>砥粒規格を混在（FEPA/ANSI/JIS）</td><td>ロット間でグレードが不一致</td><td>全仕様に1つの規格（FEPA P）を統一</td></tr>
+    <tr><td>サンプルなしに大量発注</td><td>品質/寸法不適合のリスク</td><td>サンプル依頼 → 検査 → 承認 → 量産発注</td></tr>
+    <tr><td>OEM/包装の早期未確定</td><td>生産遅延、修正コスト上昇</td><td>初回RFQにブランドファイル添付</td></tr>
   </tbody>
 </table>`;
 }
@@ -1431,10 +1433,10 @@ function buildCommonMistakes(topic: TopicSpec, model: typeof models[0] | null, p
 function buildProductPositioning(topic: TopicSpec, model: typeof models[0] | null, productCat: typeof productCategories[0] | undefined): string {
   const productName = model?.name || productCat?.name || t(topic.productFamily);
   return `
-<h3>التموضع الأساسي لـ ${productName}</h3>
-<p>${model?.summary || productCat?.description || 'منتج صناعي للتشطيب السطحي، مصمم لإزالة المادة، التسوية، واللمسات النهائية في تطبيقات الخشب والمعادن.'}</p>
-<p><strong>السيناريوهات المثالية:</strong> ${model?.useCases?.join('، ') || getMainApplication(topic.productFamily)}</p>
-<p><strong>القيود:</strong> ${model?.notes?.join('؛ ') || 'يحتاج مواصفات ماكينة دقيقة، عينة للتطبيقات الحرجة.'}</p>`;
+<h3>${productName} の基本ポジショニング</h3>
+<p>${model?.summary || productCat?.description || '産業用表面仕上げ用製品。木材・金属での材料除去、平坦化、最終仕上げを設計。'}</p>
+<p><strong>最適な場面：</strong> ${model?.useCases?.join('、') || getMainApplication(topic.productFamily)}</p>
+<p><strong>制約：</strong> ${model?.notes?.join('；') || '機械の正確な仕様が必要、重要用途はサンプル推奨。'}</p>`;
 }
 
 function buildFullSpecsTable(topic: TopicSpec, model: typeof models[0] | null, productCat: typeof productCategories[0] | undefined): string {
@@ -1443,12 +1445,12 @@ function buildFullSpecsTable(topic: TopicSpec, model: typeof models[0] | null, p
 
 function buildDesignPrinciples(topic: TopicSpec, model: typeof models[0] | null, productCat: typeof productCategories[0] | undefined): string {
   return `
-<h3>مبادئ التصميم والخصائص الأداءية</h3>
+<h3>設計原理と性能特性</h3>
 <ul class="plain-links">
-  <li><strong>الحبيبات:</strong> ${getGrainTypes(topic.productFamily).join(' / ')} — تُختار حسب صلادة المادة ومعدل الإزالة المطلوب</li>
-  <li><strong>القاعدة:</strong> ${model?.backing || 'قماش/ورق/بوليمر'} — توازن بين المرونة (للانحناءات) والثبات (للأسطح المستوية)</li>
-  <li><strong>الرابطة:</strong> إسبنجية (Resin) عالية الحرارة — تحافظ على الحبيبات تحت أحمال قطع عالية</li>
-  <li><strong>الهيكل:</strong> ${topic.productFamily === 'abrasive-belts' ? 'حزام موصول (مستقيم/مائل/متداخل)' : 'قرص موحد/مثقب/شبكي'} — مصمم لتوزيع ضغط متساوٍ</li>
+  <li><strong>砥粒：</strong> ${getGrainTypes(topic.productFamily).join(' / ')} — 材料の硬度と除去率で選択</li>
+  <li><strong>基材：</strong> ${model?.backing || '布/紙/ポリマー'} — 柔軟性（曲面）と寸法安定性（平面）のバランス</li>
+  <li><strong>接着剤：</strong> 耐熱性樹脂（Resin）— 高切削負荷でも砥粒を保持</li>
+  <li><strong>構造：</strong> ${topic.productFamily === 'abrasive-belts' ? 'ジョイント付きベルト（ストレート/斜め/インターロック）' : '均一/穴あき/メッシュディスク'} — 均一な圧力分布を設計</li>
 </ul>`;
 }
 
@@ -1462,16 +1464,16 @@ function buildCustomizationOptions(topic: TopicSpec, model: typeof models[0] | n
 
 function buildOrderingInfo(topic: TopicSpec, model: typeof models[0] | null, productCat: typeof productCategories[0] | undefined): string {
   return `
-<h3>معلومات الطلب: MOQ، مهلة التوريد، التغليف</h3>
+<h3>発注情報：MOQ、納期、包装</h3>
 <table class="spec-table">
-  <thead><tr><th>البند</th><th>التفاصيل</th></tr></thead>
+  <thead><tr><th>項目</th><th>詳細</th></tr></thead>
   <tbody>
-    <tr><td>MOQ</td><td>يُحدد حسب المقاس، الغرِت، التخصيص (راجع قسم الجملة/OEM)</td></tr>
-    <tr><td>مهلة الإنتاج</td><td>تُحدد في عرض السعر بعد اعتماد المواصفة والعينة الموقعة</td></tr>
-    <tr><td>الشحن البحري</td><td>25–35 يوماً إلى موانئ الخليج</td></tr>
-    <tr><td>التغليف القياسي</td><td>كرتون مموج، وحدات/لفة حسب المنتج، ملصق تعريف</td></tr>
-    <tr><td>تغليف OEM</td><td>حسب موافقة العميل، تكلفة إضافية، مهلة +5–7 أيام</td></tr>
-    <tr><td>شهادات مع الشحنة</td><td>COC قياسية، COA عند الطلب، SASO/ESMA/GSO حسب الوجهة</td></tr>
+    <tr><td>MOQ</td><td>寸法、砥粒、カスタマイズに応じて確定（卸売/OEMセクション参照）</td></tr>
+    <tr><td>生産リードタイム</td><td>仕様とサンプル承認後に見積りで確定</td></tr>
+    <tr><td>海上輸送</td><td>日本の港湾まで 7–15 日</td></tr>
+    <tr><td>標準包装</td><td>段ボール、製品による個装/巻き、識別ラベル</td></tr>
+    <tr><td>OEM包装</td><td>クライアント承認に基づき追加費用、リードタイム +5–7日</td></tr>
+    <tr><td>同封証書</td><td>COCは標準、COAは要時、地域要件に応じて</td></tr>
   </tbody>
 </table>`;
 }
@@ -1479,14 +1481,14 @@ function buildOrderingInfo(topic: TopicSpec, model: typeof models[0] | null, pro
 function buildTop3FAQ(topic: TopicSpec, model: typeof models[0] | null, productCat: typeof productCategories[0] | undefined): string {
   const productName = model?.name || productCat?.name || t(topic.productFamily);
   return `
-<h3>أهم 3 أسئلة - إجابات مختصرة</h3>
+<h3>主要3つの質問 - 簡潔な回答</h3>
 <dl class="faq-list">
-  <dt>كيف أختار الغرِت المناسب لـ ${productName}؟</dt>
-  <dd>مرحلة العمل تحدد: إزالة 40–80، تشطيب 100–180، نهائي 240+. المادة تحدد نوع الحبيبات.</dd>
-  <dt>ما هو الحد الأدنى للطلب (MOQ)؟</dt>
-  <dd>يُحدد بالمواصفة: المنتج القياسي أقل، OEM/تخصيص أعلى. اطلب العرض للرقم الدقيق.</dd>
-  <dt>كم مدة التوريد الإجمالية؟</dt>
-  <dd>تُحدد المدة في عرض السعر بعد اعتماد المواصفة والعينة: مدة الإنتاج + الشحن (بحري أو جوي) وجهة الشحن. الرقم الدقيق في العرض.</dd>
+  <dt>${productName}に合う砥粒はどう選ぶ？</dt>
+  <dd>工程が基準：粗削り 40–80、仕上げ 100–180、最終 240+。材料が砥粒タイプを決めます。</dd>
+  <dt>最小発注数量（MOQ）は？</dt>
+  <dd>仕様で決まります：標準製品は低め、OEM/カスタムは高め。正確な数値は見積りに依頼。</dd>
+  <dt>総納期は？</dt>
+  <dd>仕様とサンプル承認後に見積りで確定：生産期間 + 輸送（海上または空輸）+ 到着先。正確な数値は見積りに付随します。</dd>
 </dl>`;
 }
 
@@ -1496,138 +1498,138 @@ function buildDecisionReferenceTable(topic: TopicSpec, model: typeof models[0] |
 
 // ========== 各类内容构建函数 ==========
 
-// 对比表 B 列（替代产品）的真实规格，取自同站 site.ts 产品族数据，避免「غير محدد」占位行
+// 对比表 B 列（替代产品）的真实规格，取自同站 site.ts 产品族数据，避免「未定義」占位行
 function altSize(familySlug: string): string {
   const alt = { 'abrasive-belts': 'sanding-discs', 'flap-discs': 'abrasive-belts', 'sanding-discs': 'abrasive-belts', 'hook-loop': 'sanding-discs', 'sanding-sponges': 'sanding-discs' }[familySlug] || 'sanding-discs';
   const cat = productCategories.find(c => c.slug === alt);
-  const dim = cat?.specs?.find(s => /أقطار|أبعاد/i.test(s[0]))?.[1];
-  return dim || 'متعدد الأقطار';
+  const dim = cat?.specs?.find(s => /直径|標準|サイズ/i.test(s[0]))?.[1];
+  return dim || '複数サイズ';
 }
 function altBacking(familySlug: string): string {
   const alt = { 'abrasive-belts': 'sanding-discs', 'flap-discs': 'abrasive-belts', 'sanding-discs': 'abrasive-belts', 'hook-loop': 'sanding-discs', 'sanding-sponges': 'sanding-discs' }[familySlug] || 'sanding-discs';
   const cat = productCategories.find(c => c.slug === alt);
-  return cat?.specs?.find(s => /قاعدة|نوع/i.test(s[0]))?.[1] || 'حسب المنتج';
+  return cat?.specs?.find(s => /基材|タイプ/i.test(s[0]))?.[1] || '製品による';
 }
 function altAttachment(familySlug: string): string {
   const alt = { 'abrasive-belts': 'sanding-discs', 'flap-discs': 'abrasive-belts', 'sanding-discs': 'abrasive-belts', 'hook-loop': 'sanding-discs', 'sanding-sponges': 'sanding-discs' }[familySlug] || 'sanding-discs';
-  if (alt === 'sanding-discs') return 'هوك آند لوب / PSA / شبكي';
-  if (alt === 'abrasive-belts') return 'طريقة الوصل حسب الماكينة';
-  return 'حسب المنتج';
+  if (alt === 'sanding-discs') return 'フック&ループ / PSA / メッシュ';
+  if (alt === 'abrasive-belts') return '機械によるジョイント方式';
+  return '製品による';
 }
 function altGritRange(familySlug: string): string {
   const alt = { 'abrasive-belts': 'sanding-discs', 'flap-discs': 'abrasive-belts', 'sanding-discs': 'abrasive-belts', 'hook-loop': 'sanding-discs', 'sanding-sponges': 'sanding-discs' }[familySlug] || 'sanding-discs';
   const cat = productCategories.find(c => c.slug === alt);
-  const g = cat?.specs?.find(s => /حبيبات|غرِت/i.test(s[0]))?.[1];
-  return g || 'حسب الطلب';
+  const g = cat?.specs?.find(s => /砥粒|グレード/i.test(s[0]))?.[1];
+  return g || 'お見積り対応';
 }
 function getAltApplication(familySlug: string): string {
   const alt = { 'abrasive-belts': 'sanding-discs', 'flap-discs': 'abrasive-belts', 'sanding-discs': 'abrasive-belts', 'hook-loop': 'sanding-discs', 'sanding-sponges': 'sanding-discs' }[familySlug] || 'sanding-discs';
   const cat = productCategories.find(c => c.slug === alt);
-  return cat?.applications?.join('، ') || 'تطبيقات مكملة';
+  return cat?.applications?.join('、') || '補完的用途';
 }
 
 function buildComparisonTable(topic: TopicSpec, model: typeof models[0] | null, productCat: typeof productCategories[0] | undefined): string {
-  const productName = model?.name || productCat?.name || getProductFamilyNameAr(topic.productFamily);
+  const productName = model?.name || productCat?.name || getProductFamilyNameJa(topic.productFamily);
   const altProduct = topic.articleType === 'product-comparison' ? getAlternativeProduct(topic.productFamily) : productName;
 
   return `
 <table class="spec-table">
   <thead>
-    <tr><th>المعلمة</th><th>${productName}</th><th>${altProduct}</th><th>ملاحظات</th></tr>
+    <tr><th>パラメータ</th><th>${productName}</th><th>${altProduct}</th><th>メモ</th></tr>
   </thead>
   <tbody>
-    <tr><td>النوع</td><td>${productName}</td><td>${altProduct}</td><td>اختلاف في الشكل والاستخدام</td></tr>
-    <tr><td>مقاس شائع</td><td>${model?.sizeAr || 'متعدد'}</td><td>${altSize(topic.productFamily)}</td><td>يُختار حسب الماكينة</td></tr>
-    <tr><td>نطاق الغرِت</td><td>${model?.gritRange.join(' – ') || '40–800'}</td><td>${altGritRange(topic.productFamily)}</td><td>يعتمد على مرحلة العمل</td></tr>
-    <tr><td>القاعدة</td><td>${model?.backing || 'قماش/ورق/بوليمر'}</td><td>${altBacking(topic.productFamily)}</td><td>مرونة vs ثبات</td></tr>
-    <tr><td>نظام التثبيت</td><td>${model?.attachment || 'يُحدد مع الماكينة'}</td><td>${altAttachment(topic.productFamily)}</td><td>توافق الماكينة حاسم</td></tr>
-    <tr><td>التطبيق الرئيسي</td><td>${getMainApplication(topic.productFamily)}</td><td>${getAltApplication(topic.productFamily)}</td><td>قد تتداخل في بعض المراحل</td></tr>
-    <tr><td>الكمية الدنيا (MOQ)</td><td>يُحدد في العرض</td><td>يُحدد في العرض</td><td>حسب التخصيص والتغليف</td></tr>
+    <tr><td>タイプ</td><td>${productName}</td><td>${altProduct}</td><td>形状と用途の差</td></tr>
+    <tr><td>代表寸法</td><td>${model?.sizeJa || '複数'}</td><td>${altSize(topic.productFamily)}</td><td>機械に合わせ選択</td></tr>
+    <tr><td>砥粒範囲</td><td>${model?.gritRange.join(' – ') || '40–800'}</td><td>${altGritRange(topic.productFamily)}</td><td>工程で決まる</td></tr>
+    <tr><td>基材</td><td>${model?.backing || '布/紙/ポリマー'}</td><td>${altBacking(topic.productFamily)}</td><td>柔軟性と寸法安定性のトレードオフ</td></tr>
+    <tr><td>取付システム</td><td>${model?.attachment || '機械により確定'}</td><td>${altAttachment(topic.productFamily)}</td><td>機械互換性が最重要</td></tr>
+    <tr><td>主要用途</td><td>${getMainApplication(topic.productFamily)}</td><td>${getAltApplication(topic.productFamily)}</td><td>一部の工程で重複</td></tr>
+    <tr><td>MOQ</td><td>見積りで確定</td><td>見積りで確定</td><td>カスタマイズと包装で</td></tr>
   </tbody>
 </table>
 
-<p>القرار: اختر ${productName} عندما تكون الماكينة حزام/قرص متوافقة والمساحة تسمح. ${altProduct} للأماكن الضيقة أو الماكينات غير المتوافقة.</p>`;
+<p>判断：機械のベルト/ディスクが互換で、面積が許す場合は ${productName} を選択。${altProduct} は狭い場所または機械が合わない場合。</p>`;
 }
 
 function buildDecisionGuide(topic: TopicSpec, model: typeof models[0] | null, productCat: typeof productCategories[0] | undefined, industry: typeof industries[0] | undefined): string {
-  const productName = model?.name || productCat?.name || getProductFamilyNameAr(topic.productFamily);
+  const productName = model?.name || productCat?.name || getProductFamilyNameJa(topic.productFamily);
   const industryName = industry?.name || '';
 
   return `
 <div class="decision-flow">
-  <h3>خطوات التحديد (3 خطوات)</h3>
+  <h3>確定ステップ（3ステップ）</h3>
   <ol class="numbered-list">
-    <li><strong>مادة القطعة:</strong> ${getWorkpieceMaterials(topic.industry).join(' / ')}</li>
-    <li><strong>مرحلة العمل:</strong> إزالة (غرِت 40–80) → تشطيب متوسط (100–180) → لمسة نهائية (240–400+)</li>
-    <li><strong>توافق الماكينة:</strong> مقاس الحزام/القرص، نظام التثبيت (هوك آند لوب / PSA / شبكي)، اتجاه الدوران</li>
+    <li><strong>加工材料：</strong> ${getWorkpieceMaterials(topic.industry).join(' / ')}</li>
+    <li><strong>工程：</strong> 粗削り（砥粒 40–80）→ 中間仕上げ（100–180）→ 最終（240–400+）</li>
+    <li><strong>機械互換：</strong> ベルト/ディスク寸法、取付システム（フック&ループ / PSA / メッシュ）、回転方向</li>
   </ol>
 
-  <h3>مصفوفة الاختيار السريع</h3>
+  <h3>クイック選択マトリクス</h3>
   <table class="spec-table">
-    <thead><tr><td>المادة</td><td>مرحلة</td><td>الغرِت المقترح</td><td>النوع المفضل</td></tr></thead>
+    <thead><tr><td>材料</td><td>工程</td><td>推奨砥粒</td><td>推奨タイプ</td></tr></thead>
     <tbody>
-      <tr><td>خشب ناعم</td><td>إزالة</td><td>60–80</td><td>${productName}</td></tr>
-      <tr><td>خشب صلب</td><td>تشطيب</td><td>120–180</td><td>${productName}</td></tr>
-      <tr><td>فولاذ/ستانلس</td><td>إزالة صدأ</td><td>40–60</td><td>${productName} (حبيبات زركونيا/سيراميك)</td></tr>
-      <tr><td>ألومنيوم</td><td>تنعيم</td><td>180–240</td><td>${productName} (أكسيد ألومنيوم)</td></tr>
-      <tr><td>طلاء قديم</td><td>إزالة</td><td>80–100</td><td>${productName}</td></tr>
+      <tr><td>軟木</td><td>除去</td><td>60–80</td><td>${productName}</td></tr>
+      <tr><td>硬木</td><td>仕上げ</td><td>120–180</td><td>${productName}</td></tr>
+      <tr><td>鋼/ステンレス</td><td>錆除去</td><td>40–60</td><td>${productName}（ジルコニアアルミナ/セラミック砥粒）</td></tr>
+      <tr><td>アルミ</td><td>平滑化</td><td>180–240</td><td>${productName}（酸化アルミニウム）</td></tr>
+      <tr><td>旧塗料</td><td>除去</td><td>80–100</td><td>${productName}</td></tr>
     </tbody>
   </table>
 </div>`;
 }
 
 function buildSpecsSection(topic: TopicSpec, model: typeof models[0] | null, productCat: typeof productCategories[0] | undefined): string {
-  const productName = model?.name || productCat?.name || getProductFamilyNameAr(topic.productFamily);
+  const productName = model?.name || productCat?.name || getProductFamilyNameJa(topic.productFamily);
 
   return `
-<h3>المعايير المرجعية</h3>
-<p>درجات الغرِت تتبع <strong>FEPA P</strong> (الأوروبية) وهي المعيار الدولي السائد. المقابل ANSI (الأمريكية) و JIS (اليابانية) موجودة لكن لا تخلط بينهما في مواصفة واحدة.</p>
+<h3>参考基準</h3>
+<p>砥粒グレードは <strong>FEPA P</strong>（欧州）に準拠し、国際的に普及した基準です。日本では <strong>JIS</strong> も併用されますが、1つの仕様で規格を混在しないこと。</p>
 
-<h3>جدول المواصفات الكاملة</h3>
+<h3>完全仕様テーブル</h3>
 <table class="spec-table">
-  <thead><tr><th>المعلمة</th><th>القيمة / النطاق</th><th>ملاحظات</th></tr></thead>
+  <thead><tr><th>パラメータ</th><th>値/範囲</th><th>メモ</th></tr></thead>
   <tbody>
-    <tr><td>المنتج</td><td>${productName}</td><td></td></tr>
-    <tr><td>المقاس</td><td>${model?.sizeAr || productCat?.specs?.find(s => s[0].includes('أبعاد'))?.[1] || 'متعدد المقاسات'}</td><td>يُحدد بالملّيمتر بدقة</td></tr>
-    <tr><td>نطاق الغرِت</td><td>${model?.gritRange.join('، ') || 'حسب الطلب'}</td><td>FEPA P قياسي</td></tr>
-    <tr><td>نوع الحبيبات</td><td>${getGrainTypes(topic.productFamily).join(' / ')}</td><td>يُختار حسب المادة</td></tr>
-    <tr><td>القاعدة (Backing)</td><td>${model?.backing || 'قماش، ورق، أو بوليمر'}</td><td>مرونة، ثبات، مقاومة رطوبة</td></tr>
-    <tr><td>الرابطة (Bond)</td><td>إسفنجية (Resin)</td><td>مقاومة حرارة عالية</td></tr>
-    <tr><td>نظام التثبيت</td><td>${model?.attachment || 'هوك آند لوب / PSA / شبكي'}</td><td>يجب مطابقة الماكينة</td></tr>
-    <tr><td>السرعة القصوى</td><td>وفق ملصق المنتج</td><td>لا تتجاوز RPM الماكينة</td></tr>
-    <tr><td>السلامة</td><td>PPE إلزامي، سحب غبار</td><td>OSHA/NIOSH + محلي</td></tr>
+    <tr><td>製品</td><td>${productName}</td><td></td></tr>
+    <tr><td>寸法</td><td>${model?.sizeJa || productCat?.specs?.find(s => s[0].includes('標準'))?.[1] || '複数寸法'}</td><td>mmで正確に指定</td></tr>
+    <tr><td>砥粒範囲</td><td>${model?.gritRange.join('、') || 'お見積り対応'}</td><td>FEPA P 標準</td></tr>
+    <tr><td>砥粒タイプ</td><td>${getGrainTypes(topic.productFamily).join(' / ')}</td><td>材料で選択</td></tr>
+    <tr><td>基材（Backing）</td><td>${model?.backing || '布、紙、またはポリマー'}</td><td>柔軟性、安定性、耐湿</td></tr>
+    <tr><td>接着剤（Bond）</td><td>樹脂（Resin）</td><td>耐熱性</td></tr>
+    <tr><td>取付システム</td><td>${model?.attachment || 'フック&ループ / PSA / メッシュ'}</td><td>機械と一致必須</td></tr>
+    <tr><td>最大速度</td><td>製品ラベルに準拠</td><td>機械RPMの限度を超えない</td></tr>
+    <tr><td>安全</td><td>保護具必須、集じん</td><td>労働安全衛生法 + JIS</td></tr>
   </tbody>
 </table>`;
 }
 
-function buildApplicationSection(topic: TopicSpec, model: typeof models[0] | null, productCat: typeof productCategories[0] | undefined, industry: typeof industries[0] | undefined, gccCountry: typeof gccCountries[0] | undefined): string {
-  const productName = model?.name || productCat?.name || getProductFamilyNameAr(topic.productFamily);
+function buildApplicationSection(topic: TopicSpec, model: typeof models[0] | null, productCat: typeof productCategories[0] | undefined, industry: typeof industries[0] | undefined, jaRegion: typeof jaRegions[0] | undefined): string {
+  const productName = model?.name || productCat?.name || getProductFamilyNameJa(topic.productFamily);
   const industryName = industry?.name || '';
-  const countryName = gccCountry?.name || '';
+  const regionName = jaRegion?.name === '全国' ? '全国' : (jaRegion ? `${jaRegion.name}地域` : '');
 
   return `
-<h3>دورة العمل في ${industryName}${countryName ? ` (${countryName})` : ''}</h3>
+<h3>${industryName}${regionName ? `（${regionName}）` : ''} での工程</h3>
 <ol class="numbered-list">
-  <li><strong>التجهيز:</strong> تنظيف السطح، إزالة الصدأ/الطلاء القديم، فحص العيوب</li>
-  <li><strong>الإزالة السريعة:</strong> ${productName} بغرِت 40–80، ضغط معتدل، سرعة موصى بها</li>
-  <li><strong>التسوية المتوسطة:</strong> غرِت 100–180، تخفيف الضغط، تمريرات متقاطعة</li>
-  <li><strong>التشطيب النهائي:</strong> غرِت 240–400 (أو أعلى للدهان)، حركة منتظمة</li>
-  <li><strong>التنظيف والفحص:</strong> إزالة الغبار، فحص خشونة السطح (Ra/Rz)، تجهيز للخطوة التالية</li>
+  <li><strong>準備：</strong> 表面清掃、錆/旧塗料の除去、不良検査</li>
+  <li><strong>速削り：</strong> ${productName} 砥粒 40–80、適度な圧力、推奨速度</li>
+  <li><strong>中間平坦化：</strong> 砥粒 100–180、圧力軽減、クロスパス</li>
+  <li><strong>最終仕上げ：</strong> 砥粒 240–400（塗装にはそれ以上）、一定の動き</li>
+  <li><strong>清掃と検査：</strong> 粉塵除去、表面粗さ（Ra/Rz）検査、次工程準備</li>
 </ol>
 
-<h3>تسلسل الغرِت المقترح</h3>
+<h3>推奨砥粒シークエンス</h3>
 <table class="spec-table">
-  <thead><tr><th>المرحلة</th><th>الغرِت</th><th>الهدف</th><th>ملاحظات</th></tr></thead>
+  <thead><tr><th>工程</th><th>砥粒</th><th>目的</th><th>メモ</th></tr></thead>
   <tbody>
-    <tr><td>إزالة مادة/صدأ/طلاء</td><td>40 – 80</td><td>إنتاجية عالية</td><td>زركونيا/سيراميك للمعدن</td></tr>
-    <tr><td>تشطيب متوسط</td><td>100 – 180</td><td>تسوية آثار المرحلة السابقة</td><td>أكسيد ألومنيوم عام</td></tr>
-    <tr><td>تشطيب ناعم</td><td>240 – 400</td><td>تحضير للدهان/الطلاء</td><td>تجنب اللمعان المفرط</td></tr>
-    <tr><td>لمسة نهائية</td><td>600 – 1500+</td><td>أسطح مرئية/دقيقة</td><td>للأثاث، السيارات، دقة</td></tr>
+    <tr><td>材料/錆/塗料の除去</td><td>40 – 80</td><td>高能率</td><td>金属にはジルコニアアルミナ/セラミック</td></tr>
+    <tr><td>中間仕上げ</td><td>100 – 180</td><td>前工程の痕の平坦化</td><td>汎用の酸化アルミニウム</td></tr>
+    <tr><td>細目仕上げ</td><td>240 – 400</td><td>塗装準備</td><td>過度な光沢化を避ける</td></tr>
+    <tr><td>最終仕上げ</td><td>600 – 1500+</td><td>見える面/精密面</td><td>家具、自動車、精密</td></tr>
   </tbody>
 </table>
-${gccCountry?.industrialClusters?.length ? `
-<h3>مراكز الطلب في ${countryName}</h3>
-<p>${countryName} تتركز فيه الطلبات الصناعية أساسًا في مناطق: ${gccCountry.industrialClusters.join('، ')}. تُنسق الكميات ومواعيد التوريد وفق أقرب ميناء لهذه المناطق، مع مراعاة ظروف التخزين لكل موقع.</p>` : ''}`;
+${jaRegion?.clusters?.length ? `
+<h3>${regionName} の需要ハブ</h3>
+<p>${regionName}では需要は主に ${jaRegion.clusters.join('、')} に集中しています。数量と納期は最寄りの港湾に合わせ調整し、各拠点の保管条件を考慮します。</p>` : ''}`;
 }
 
 function buildProcessSteps(topic: TopicSpec, model: typeof models[0] | null, productCat: typeof productCategories[0] | undefined, industry: typeof industries[0] | undefined): string {
@@ -1635,302 +1637,300 @@ function buildProcessSteps(topic: TopicSpec, model: typeof models[0] | null, pro
   const industryName = industry?.name || '';
 
   return `
-<h3>إجراء تشغيل قياسي (SOP) - ${industryName}</h3>
+<h3>標準作業手順（SOP）- ${industryName}</h3>
 <ol class="numbered-list">
-  <li><strong>فحص الماكينة:</strong> نظافة البكرات، اتجاه الدوران، حالة وسادة التثبيت، نظام الشفط</li>
-  <li><strong>تركيب ${productName}:</strong> مطابقة المقاس، تثبيت صحيح، فحص محاذاة الحزام/القرص</li>
-  <li><strong>اختبار تشغيل:</strong> 30 ثانية بدون قطعة، مراقبة اهتزاز/صوت/انحراف</li>
-  <li><strong>ضبط المعلمات:</strong> السرعة (RPM)، الضغط (N/cm²)، معدل التغذية (m/min)</li>
-  <li><strong>الصنفرة التسلسلية:</strong> اتبع جدول الغرِت، نظف السطح بين كل درجة</li>
-  <li><strong>مراقبة الجودة:</strong> فحص بصري + مقياس خشونة كل 50 قطعة أو كل دفعة</li>
-  <li><strong>تغيير الغرِت:</strong> أوقف الماكينة، أزل القديم، نظف القاعدة، ثبت الجديد، اختبر</li>
-  <li><strong>إيقاف وتنظيف:</strong> أزل ${productName}، نظف الماكينة، خزن في مكان جاف</li>
+  <li><strong>機械確認：</strong> ローラーの清潔さ、回転方向、パッド状態、集じんシステム</li>
+  <li><strong>${productName} の取付：</strong> 寸法照合、正しい取付、ベルト/ディスクのアライメント確認</li>
+  <li><strong>空転試験：</strong> 30秒部品なし、振動/異音/偏位を確認</li>
+  <li><strong>パラメータ設定：</strong> 速度（RPM）、圧力（N/cm²）、送り速度（m/min）</li>
+  <li><strong>段階的サンディング：</strong> 砥粒テーブルに従い、各グレード間で表面清掃</li>
+  <li><strong>品質監視：</strong> 50点ごとまたはロットごとに目視 + 粗さ計</li>
+  <li><strong>砥粒交換：</strong> 機械停止、旧品取り外し、ベース清掃、新品取付、試験</li>
+  <li><strong>停止と清掃：</strong> ${productName} を取り外し、機械を清掃し、乾燥場所に保管</li>
 </ol>
 
-<h3>معلمات تشغيل مرجعية</h3>
+<h3>参考作業パラメータ</h3>
 <table class="spec-table">
-  <thead><tr><th>المعلمة</th><th>النطاق المقترح</th><th>تنبيه</th></tr></thead>
+  <thead><tr><th>パラメータ</th><th>推奨範囲</th><th>注意</th></tr></thead>
   <tbody>
-    <tr><td>السرعة (حزام)</td><td>15–30 م/ث</td><td>لا تتجاوز حد المنتج</td></tr>
-    <tr><td>السرعة (قرص)</td><td>وفق قطر القرص و RPM الماكينة</td><td>تحقق من الملصق</td></tr>
-    <tr><td>الضغط</td><td>0.5–2 N/cm²</td><td>ضغط زائد = تآكل + حرارة</td></tr>
-    <tr><td>معدل التغذية</td><td>3–8 م/دقيقة</td><td>حسب المادة والنتيجة</td></tr>
+    <tr><td>速度（ベルト）</td><td>15–30 m/s</td><td>製品限度を超えない</td></tr>
+    <tr><td>速度（ディスク）</td><td>ディスク径と機械RPMに応じて</td><td>ラベルを確認</td></tr>
+    <tr><td>圧力</td><td>0.5–2 N/cm²</td><td>圧力過大 = 摩耗 + 発熱</td></tr>
+    <tr><td>送り速度</td><td>3–8 m/分</td><td>材料と結果に応じて</td></tr>
   </tbody>
 </table>`;
 }
 
-function buildSafetyCompliance(topic: TopicSpec, industry: typeof industries[0] | undefined, gccCountry: typeof gccCountries[0] | undefined): string {
-  const countryName = gccCountry?.name || '';
-  const countryCode = gccCountry?.code || '';
+function buildSafetyCompliance(topic: TopicSpec, industry: typeof industries[0] | undefined, jaRegion: typeof jaRegions[0] | undefined): string {
+  const regionName = jaRegion?.name === '全国' ? '全国' : (jaRegion ? `${jaRegion.name}地域` : '');
+  const regionCode = jaRegion?.code || '';
 
-  let standards = 'FEPA، ISO 6344، ISO 15636، OSHA 1910.215، NIOSH';
-  if (countryCode === 'saudi-arabia') standards += '، SASO';
-  if (countryCode === 'uae') standards += '، ESMA';
-  if (countryCode !== 'general-gcc') standards += '، GSO';
+  let standards = 'JIS R 6001、ISO 6344、労働安全衛生法';
+  if (regionCode !== 'general-jp') standards += '、JANSI';
 
   return `
-<h3>متطلبات السلامة (PPE إلزامي)</h3>
+<h3>安全要件（保護具必須）</h3>
 <ul class="plain-links">
-  <li>نظارات واقية / وجهية (EN 166 / ANSI Z87.1)</li>
-  <li>كمامة تنفس (N95 / FFP2 mínimo، أعلى للغبار الدقيق)</li>
-  <li>قفازات مقاومة للقطع (EN 388)</li>
-  <li>واقي سمع (EN 352) للماكينات الصاخبة</li>
-  <li>ملابس عمل طويلة، لا مجوهرات، شعر مربوط</li>
+  <li>保護メガネ / フェースシールド（JIS T 8166）</li>
+  <li>粉塵マスク（N95 / FFP2 以上、微細粉塵は上級）</li>
+  <li>耐切創グローブ（EN 388 / ISO 15636）</li>
+  <li>騒音のある機械には防音具</li>
+  <li>長袖作業着、装飾品禁止、髪を束ねる</li>
 </ul>
 
-<h3>سحب الغبار والتهوية</h3>
+<h3>集じんと換気</h3>
 <ul class="plain-links">
-  <li>نظام شفط مركزي أو محلي عند كل ماكينة</li>
-  <li>فلترة HEPA للغبار الدقيق (خاصة السيراميك/الزركونيا)</li>
-  <li>معدل تبديل الهواء: ≥ 6 مر/ساعة في ورش الصنفرة</li>
+  <li>各機械に中央式または局部集じん</li>
+  <li>微細粉塵には HEPA フィルタ（セラミック/ジルコニアアルミナ特に）</li>
+  <li>サンディング作業場の換気回数：時あたり 6 回以上</li>
 </ul>
 
-<h3>حدود السرعة والامتثال</h3>
+<h3>速度限度と適合</h3>
 <ul class="plain-links">
-  <li>لا تتجاوز <strong>الحد الأقصى RPM</strong> المطبوع على المنتج</li>
-  <li>تفقد المنتج قبل كل استخدام: شقوق، تلف، تآكل غير متساوٍ</li>
-  <li>المعايير المطبقة: ${standards}</li>
-  ${countryCode !== 'general-gcc' ? `<li><strong>تنبيه:</strong> اللوائح في ${countryName} قد تفرض متطلبات إضافية. راجع الجهة المحلية (${getLocalRegulator(countryCode)}) قبل التشغيل.</li>` : ''}
+  <li>製品に印字された <strong>最大RPM</strong> を超えない</li>
+  <li>使用前に製品を確認：割れ、破損、不均一摩耗</li>
+  <li>適用規格：${standards}</li>
+  ${regionCode !== 'general-jp' ? `<li><strong>注意：</strong> ${regionName} では追加要件がある場合があります。作業前に地域の管理機関（${getLocalRegulator(regionCode)}）を参照してください。</li>` : ''}
 </ul>
 
-<p class="disclaimer">المعلومات أعلاه للإرشاد فقط. المرجع النهائي: ملصق المنتج، ورقة بيانات التقنية، دليل الماكينة، واللوائح المحلية السارية.</p>`;
+<p class="disclaimer">上記は参考情報です。最終基準：製品ラベル、技術データシート、機械マニュアル、現行の地域規制。</p>`;
 }
 
 function buildCostOptimization(topic: TopicSpec, model: typeof models[0] | null, productCat: typeof productCategories[0] | undefined): string {
-  const productName = model?.name || productCat?.name || getProductFamilyNameAr(topic.productFamily);
+  const productName = model?.name || productCat?.name || getProductFamilyNameJa(topic.productFamily);
 
   return `
-<h3>نقاط التحكم في التكلفة الإجمالية (TCO)</h3>
+<h3>TCO（総所有コスト）の管理ポイント</h3>
 <table class="spec-table">
-  <thead><tr><th>العامل</th><th>التأثير على التكلفة</th><th>إجراء تحسين</th></tr></thead>
+  <thead><tr><th>要因</th><th>コストへの影響</th><th>改善行動</th></tr></thead>
   <tbody>
-    <tr><td>اختيار الغرِت الصحيح</td><td>تجنب إعادة العمل + عمر أطول</td><td>اختبار 2–3 درجات قبل الطلب الكمي</td></tr>
-    <tr><td>نوع الحبيبات</td><td>سيراميك/زركوريا أغلى لكن تدوم 2–3×</td><td>احسب تكلفة المتر المربع لا سعر الوحدة</td></tr>
-    <tr><td>القاعدة المناسبة</td><td>قماش مرن = أقل كسر على الانحناءات</td><td>مطابقة القاعدة لشكل القطعة</td></tr>
-    <tr><td>نظام الشفط</td><td>يقلل الانسداد → يطيل العمر 30–50%</td><td>استثمر في شفط فعال</td></tr>
-    <tr><td>الصيانة الوقائية</td><td>بكرات نظيفة = حزام مستقيم = تآكل متساوٍ</td><td>جدول تنظيف يومي/أسبوعي</td></tr>
-    <tr><td>الكمية والتغليف</td><td>طلب كمي = سعر وحدة أقل + شحن محسن</td><td>تجميع الطلبات الشهرية/الربع سنوية</td></tr>
+    <tr><td>正しい砥粒選択</td><td>再作業回避 + 寿命延長</td><td>量産前に 2–3 グレードの試験</td></tr>
+    <tr><td>砥粒タイプ</td><td>セラミック/ジルコニアアルミナは高価だが 2–3 倍長寿命</td><td>単位価格ではなく平方メートル単位で計算</td></tr>
+    <tr><td>適切な基材</td><td>柔軟な布 = 曲面での破損低減</td><td>部品形状に基材を合わせる</td></tr>
+    <tr><td>集じんシステム</td><td>ローディング低減 → 寿命 30–50% 延長</td><td>有効な集じんへの投資</td></tr>
+    <tr><td>予防整備</td><td>清潔なローラー = ベルト直進 = 均一摩耗</td><td>日次/週次の清掃スケジュール</td></tr>
+    <tr><td>数量と包装</td><td>大量発注 = 単位価格低下 + 輸送最適化</td><td>月次/四半期の注文まとめ</td></tr>
   </tbody>
 </table>
 
-<p>النصيحة: اطلب <strong>عرض سعر متدرج</strong> (كميات 100، 500، 1000، 5000 وحدة) للمقارنة الحقيقية.</p>`;
+<p>アドバイス：<strong>段階見積</strong>（数量 100、500、1000、5000 単位）を依頼し、真の比較を行ってください。</p>`;
 }
 
 function buildProcurementTemplate(topic: TopicSpec, model: typeof models[0] | null, productCat: typeof productCategories[0] | undefined): string {
-  const gccCountryName = () => {
-    const c = gccCountries.find(g => g.code === topic.gccCountry);
-    return c && c.code !== 'general-gcc' ? `${c.industrialClusters[0]} (${c.name})` : '';
+  const jaRegionName = () => {
+    const r = jaRegions.find(g => g.code === topic.jaRegion);
+    return r && r.code !== 'general-jp' ? `${r.clusters[0]}（${r.name}）` : '';
   };
-  const productName = model?.name || productCat?.name || getProductFamilyNameAr(topic.productFamily);
+  const productName = model?.name || productCat?.name || getProductFamilyNameJa(topic.productFamily);
 
   return `
-<h3>نموذج مواصفة طلب عرض سعر (RFQ) - ${productName}</h3>
-<p>انسخ الجدول، املأ البيانات، وأرسل عبر نموذج الاستفسار.</p>
+<h3>見積依頼（RFQ）仕様テンプレート - ${productName}</h3>
+<p>表をコピーし、記入のうえ、お問い合わせフォームから送信してください。</p>
 
 <table class="spec-table">
-  <thead><tr><th>الحقل</th><th>مثال / تنسيق</th><th>إلزامي؟</th></tr></thead>
+  <thead><tr><th>項目</th><th>例/形式</th><th>必須？</th></tr></thead>
   <tbody>
-    <tr><td>اسم المنتج / العائلة</td><td>${productName}</td><td>نعم</td></tr>
-    <tr><td>المقاس (مم / إنش)</td><td>${model?.sizeAr || '533 × 75 مم / 5 إنش'}</td><td>نعم</td></tr>
-    <tr><td>درجة الغرِت (FEPA)</td><td>${model?.gritRange?.slice(0, 3).join('، ') || '80، 120، 240'}</td><td>نعم</td></tr>
-    <tr><td>نوع الحبيبات</td><td>أكسيد ألومنيوم / زركونيا / سيراميك</td><td>يفضل</td></tr>
-    <tr><td>القاعدة (Backing)</td><td>قماش X / ورق Y / بوليمر Z</td><td>يفضل</td></tr>
-    <tr><td>نظام التثبيت</td><td>هوك آند لوب / PSA / شبكي</td><td>نعم</td></tr>
-    <tr><td>الكمية التقديرية</td><td>5000 وحدة / شهر</td><td>نعم</td></tr>
-    <tr><td>تكرار الطلب</td><td>شهري / ربع سنوي / سنوي</td><td>يفضل</td></tr>
-    <tr><td>التطبيق / المادة</td><td>ستانلس ستيل، إزالة لحام</td><td>نعم</td></tr>
-    <tr><td>طراز الماكينة</td><td>${model?.attachment || 'Timesavers 1300 / ماكينة حزام قياسية'}</td><td>نعم</td></tr>
-    <tr><td>طريقة الوصل (للأحزمة)</td><td>مستقيم / مائل / متداخل</td><td>للأحزمة فقط</td></tr>
-    <tr><td>التغليف</td><td>صندوق كرتون / لفة / حزمة مخصصة</td><td>يفضل</td></tr>
-    <tr><td>OEM / علامة تجارية</td><td>نعم / لا، ملف شعار مرفق</td><td>إذا مطبق</td></tr>
-    <tr><td>وجهة الشحن (الميناء/المدينة)</td><td>${gccCountryName() || 'جدة / جبل علي / الدوحة'}</td><td>نعم</td></tr>
-    <tr><td>شروط الدفع المفضلة</td><td>LC / TT 30% مقدم</td><td>يفضل</td></tr>
-    <tr><td>شهادات مطلوبة</td><td>COC / COA / SASO / ESMA</td><td>إذا مطبق</td></tr>
+    <tr><td>製品名/ファミリー</td><td>${productName}</td><td>必須</td></tr>
+    <tr><td>寸法（mm / inch）</td><td>${model?.sizeJa || '533 × 75 mm / 5 inch'}</td><td>必須</td></tr>
+    <tr><td>砥粒グレード（FEPA）</td><td>${model?.gritRange?.slice(0, 3).join('、') || '80、120、240'}</td><td>必須</td></tr>
+    <tr><td>砥粒タイプ</td><td>酸化アルミニウム / ジルコニアアルミナ / セラミック</td><td>推奨</td></tr>
+    <tr><td>基材（Backing）</td><td>布 X / 紙 Y / ポリマー Z</td><td>推奨</td></tr>
+    <tr><td>取付システム</td><td>フック&ループ / PSA / メッシュ</td><td>必須</td></tr>
+    <tr><td>推定数量</td><td>5000個/月</td><td>必須</td></tr>
+    <tr><td>注文頻度</td><td>月次 / 四半期 / 年次</td><td>推奨</td></tr>
+    <tr><td>用途/材料</td><td>ステンレス、溶接ビード除去</td><td>必須</td></tr>
+    <tr><td>機械タイプ</td><td>${model?.attachment || 'Timesavers 1300 / 標準ベルト研削機'}</td><td>必須</td></tr>
+    <tr><td>ジョイント方式（ベルトの場合）</td><td>ストレート / 斜め / インターロック</td><td>ベルトのみ</td></tr>
+    <tr><td>包装</td><td>段ボールケース / 巻き / カスタム</td><td>推奨</td></tr>
+    <tr><td>OEM/ブランド</td><td>あり/なし、ロゴファイル添付</td><td>該当時</td></tr>
+    <tr><td>出荷先（港/都市）</td><td>${jaRegionName() || '横浜 / 神戸 / 大阪'}</td><td>必須</td></tr>
+    <tr><td>希望決済条件</td><td>LC / TT 前払30%</td><td>推奨</td></tr>
+    <tr><td>必要証書</td><td>COC / COA / JIS / JANSI</td><td>該当時</td></tr>
   </tbody>
 </table>`;
 }
 
 function buildOEMOptions(topic: TopicSpec, model: typeof models[0] | null, productCat: typeof productCategories[0] | undefined): string {
-  const productName = model?.name || productCat?.name || getProductFamilyNameAr(topic.productFamily);
+  const productName = model?.name || productCat?.name || getProductFamilyNameJa(topic.productFamily);
 
   return `
-<h3>مصفوفة خيارات OEM - ${productName}</h3>
+<h3>OEMオプションマトリクス - ${productName}</h3>
 <table class="spec-table">
-  <thead><tr><th>عنصر التخصيص</th><th>الخيارات</th><th>تأثير على MOQ</th><th>ملاحظات</th></tr></thead>
+  <thead><tr><th>カスタマイズ項目</th><th>オプション</th><th>MOQへの影響</th><th>メモ</th></tr></thead>
   <tbody>
-    <tr><td>الشعار على المنتج</td><td>طباعة حبر / ليزر / نقش</td><td>+10–20%</td><td>ملف فيكتور (AI/SVG/EPS) إلزامي</td></tr>
-    <tr><td>اللون</td><td>أحمر (قياسي) / أزرق / أخضر / مخصص</td><td>+5–15%</td><td>كود بانتون مطلوب</td></tr>
-    <tr><td>التغليف الخارجي</td><td>صندوق بني / ملون / مطبوع</td><td>+0–10%</td><td>رسومات تغليف بأبعاد دقيقة</td></tr>
-    <tr><td>التغليف الداخلي</td><td>أكياس PE / صناديق فردية / لفات</td><td>+0–5%</td><td>حسب الكمية والنقل</td></tr>
-    <tr><td>الملصقات/الباركود</td><td>GS1 / مخصص / بدون</td><td>+0%</td><td>تزويد ملف CSV للبيانات</td></tr>
-    <tr><td>اللغات على العبوة</td><td>عربي، إنجليزي، أخرى</td><td>+0%</td><td>نصوص معتمدة من العميل</td></tr>
-    <tr><td>شهادات مخصصة</td><td>COC ببيانات العميل / COA لكل دفعة</td><td>+5% / دفعة</td><td>يُتفق في العقد</td></tr>
+    <tr><td>製品上のロゴ</td><td>インク印刷 / レーザー / 刻印</td><td>+10–20%</td><td>ベクトルファイル（AI/SVG/EPS）必須</td></tr>
+    <tr><td>カラー</td><td>赤（標準）/ 青 / 緑 / カスタム</td><td>+5–15%</td><td>Pantone コード必須</td></tr>
+    <tr><td>外装パッケージ</td><td>棕色 / カラー / 印刷</td><td>+0–10%</td><td>正確な寸法の包装図面</td></tr>
+    <tr><td>内装パッケージ</td><td>PE 袋 / 個別箱 / 巻き</td><td>+0–5%</td><td>数量と輸送に応じて</td></tr>
+    <tr><td>ラベル/バーコード</td><td>JAN / カスタム / なし</td><td>+0%</td><td>データCSVファイル提供</td></tr>
+    <tr><td>包装上の言語</td><td>日本語、英語、その他</td><td>+0%</td><td>クライアント承認テキスト</td></tr>
+    <tr><td>カスタム証書</td><td>クライアント情報付きCOC / ロット毎COA</td><td>+5%/ロット</td><td>契約で合意</td></tr>
   </tbody>
 </table>
 
-<h3>عملية تأكيد العينة</h3>
+<h3>サンプル確認工程</h3>
 <ol class="numbered-list">
-  <li>العميل يرسل ملفات الشعار/التغليف + مواصفة المنتج</li>
-  <li>ننتج عينة أولية (5–10 وحدات) خلال 10–15 يوم عمل</li>
-  <li>العميل يفحص: أبعاد، طباعة، ألوان، جودة صنفرة</li>
-  <li>تعديلات (إن وجدت) → عينة ثانية خلال 5–7 أيام</li>
-  <li>توقيع "موافقة عينة" → بدء الإنتاج الكمي</li>
-  <li>مهلة الإنتاج: تُحدد في عرض السعر حسب الكمية والتعقيد</li>
+  <li>クライアントがロゴ/包装ファイル + 製品仕様を送信</li>
+  <li>初期サンプルを製造（5–10点）、10–15営業日</li>
+  <li>クライアント検査：寸法、印刷、カラー、サンディング品質</li>
+  <li>修正がある場合 → 5–7日で再サンプル</li>
+  <li>「サンプル承認」署名 → 量産開始</li>
+  <li>生産リードタイムは数量と複雑度で見積りで確定</li>
 </ol>`;
 }
 
-function buildLogisticsPorts(gccCountry: typeof gccCountries[0] | undefined): string {
-  if (!gccCountry || gccCountry.code === 'general-gcc') return '';
+function buildLogisticsPorts(jaRegion: typeof jaRegions[0] | undefined): string {
+  if (!jaRegion || jaRegion.code === 'general-jp') return '';
 
   const ports: Record<string, string[]> = {
-    'saudi-arabia': ['جدة الإسلامي', 'الملك عبدالعزيز (الدمام)', 'ينبع التجاري', 'جيزان'],
-    'uae': ['جبل علي (الأكبر)', 'خليفة (أبوظبي)', 'الحمرية (الشارقة)', 'الفجيرة'],
-    'qatar': ['حمد (الرئيسي)', 'الدوحة القديم', 'رأس لفان (الغاز)'],
-    'kuwait': ['الشويخ (الرئيسي)', 'الأحمدي (النفط)', 'الدوحة (الصغير)'],
-    'bahrain': ['خليفة بن سلمان (الرئيسي)', 'سترة (الصناعي)'],
-    'oman': ['صلالة (الرئيسي/التحويل)', 'صحار (الصناعي)', 'الدقم (الجديد)', 'مسقط (القديم)'],
+    'kanto': ['横浜（最大）', '川崎', '千葉（京葉）'],
+    'kansai': ['神戸', '大阪'],
+    'tohoku': ['仙台（石巻）', '東京（経由）'],
+    'chubu': ['名古屋', '新潟', '富山'],
+    'chugoku': ['広島', '高松（経由）'],
+    'kyushu': ['北九州', '福岡', '門司'],
   };
 
-  const countryPorts = ports[gccCountry.code] || [];
+  const regionPorts = ports[jaRegion.code] || [];
 
   return `
-<h3>الموانئ الرئيسية في ${gccCountry.name}</h3>
+<h3>${jaRegion.name}地域の主要港湾</h3>
 <ul class="plain-links">
-  ${countryPorts.map(p => `<li>${p}</li>`).join('')}
+  ${regionPorts.map(p => `<li>${p}</li>`).join('')}
 </ul>
 
-<h3>مهل الشحن البحري التقديرية (من الصين)</h3>
+<h3>海上輸送リードタイム概算（中国より）</h3>
 <table class="spec-table">
-  <thead><tr><th>الميناء</th><th>أيام الإبحار</th><th>التخليص + التسليم</th><th>الإجمالي</th></tr></thead>
+  <thead><tr><th>港湾</th><th>航行日数</th><th>通関 + 納品</th><th>合計</th></tr></thead>
   <tbody>
-    ${countryPorts.map(p => `<tr><td>${p}</td><td>20–28</td><td>5–7</td><td>25–35</td></tr>`).join('')}
+    ${regionPorts.map(p => `<tr><td>${p}</td><td>7–12</td><td>2–3</td><td>9–15</td></tr>`).join('')}
   </tbody>
 </table>
 
-<p><strong>الشحن الجوي:</strong> 3–5 أيام + 1–2 يوم تخليص. التكلفة 4–6× البحري. للحالات العاجلة فقط.</p>
+<p><strong>空輸：</strong> 3–5日 + 通関1–2日。費用は海上の4–6倍。緊急時のみ。</p>
 
-<p><strong>المستندات المطلوبة:</strong> بوليصة شحن، فاتورة تجارية، قائمة تعبئة، شهادة المنشأ، شهادة مطابقة (SASO/ESMA/GSO)، بوليصة تأمين.</p>`;
+<p><strong>必要書類：</strong> 船荷証券、インボイス、パッキングリスト、原産国証明、適合証明書（COC/COA）、保険証券。</p>`;
 }
 
-function buildMarketTrends(topic: TopicSpec, industry: typeof industries[0] | undefined, gccCountry: typeof gccCountries[0] | undefined): string {
+function buildMarketTrends(topic: TopicSpec, industry: typeof industries[0] | undefined, jaRegion: typeof jaRegions[0] | undefined): string {
   const industryName = industry?.name || '';
-  const countryName = gccCountry?.name || '';
+  const regionName = jaRegion?.name === '全国' ? '全国' : (jaRegion ? `${jaRegion.name}地域` : '');
 
   return `
-<h3>محركات السوق في ${industryName}${countryName ? ` (${countryName})` : ''}</h3>
+<h3>${industryName}${regionName ? `（${regionName}）` : ''} の市場推進要因</h3>
 <ul class="plain-links">
-  <li><strong>تحديث المعايير:</strong> FEPA P 2023، ISO 6344:2022 تفرض اتساقاً أدق للغرِت</li>
-  <li><strong>الصحة والسلامة:</strong> SASO/ESMA/GSO تشدد على حدود الغبار القابل للتنفس، PPE إلزامي</li>
-  <li><strong>الأتمتة:</strong> خطوط صنفرة روبوتية تحتاج أحزمة/أقراص بتماسك أبعاد عالي</li>
-  <li><strong>الاستدامة:</strong> طلب متزايد لقواعد قابلة لإعادة التدوير، حبيبات أقل انبعاثاً</li>
+  <li><strong>規格のアップデート：</strong> JIS R 6001、ISO 6344 が砥粒の均一性をより厳密に要求</li>
+  <li><strong>健康安全：</strong> 労働安全衛生法による粉じん管理基準、保護具必須</li>
+  <li><strong>自動化：</strong> ロボットサンディングラインは寸法公差の厳しいベルト/ディスクを要求</li>
+  <li><strong>サステナビリティ：</strong> リサイクル可能な基材、低排出砥粒への需要増加</li>
 </ul>
 
-<h3>اتجاهات المنتج</h3>
+<h3>製品トレンド</h3>
 <table class="spec-table">
-  <thead><tr><th>الاتجاه</th><th>التأثير على الشراء</th><th>المنتجات المعنية</th></tr></thead>
+  <thead><tr><th>トレンド</th><th>調達への影響</th><th>対象製品</th></tr></thead>
   <tbody>
-    <tr><td>حبيبات سيراميك/زركونيا</td><td>سعر أعلى، عمر 2–3×، تكلفة متر مربع أقل</td><td>أحزمة، أقراص، فلب ديسك</td></tr>
-    <tr><td>قواعد بوليمرية مقاومة رطوبة</td><td>استقرار أبعاد في بيئات رطبة/ساحلية</td><td>أحزمة كبيرة، أقراص</td></tr>
-    <tr><td>أقراص شبكية متعددة الثقوب</td><td>شفط أفضل، أقل انسداد، تشطيب موحد</td><td>أقراص 5/6 إنش</td></tr>
-    <tr><td>نظام هوك آند لوب محسن</td><td>تغيير أسرع، ثبات أعلى، عمر قاعدة أطول</td><td>جميع الأقطار</td></tr>
+    <tr><td>セラミック/ジルコニアアルミナ砥粒</td><td>高価格、寿命 2–3 倍、平方メートル単価は低</td><td>ベルト、ディスク、フラップディスク</td></tr>
+    <tr><td>耐湿ポリマー基材</td><td>湿潤/海岸環境での寸法安定性</td><td>大型ベルト、ディスク</td></tr>
+    <tr><td>多穴メッシュディスク</td><td>集じん向上、ローディング低減、均一な仕上げ</td><td>5/6 inch ディスク</td></tr>
+    <tr><td>フック&ループシステム改善</td><td>交換迅速化、保持向上、パッド寿命延長</td><td>全径</td></tr>
   </tbody>
 </table>
 
-<p>التوصية: في طلبات التوريد طويلة الأمد، اطلب <strong>خريطة طريق المنتج</strong> من المورد لتجنب التقادم.</p>`;
+<p>推奨：長期調達では、サプライヤーに<strong>製品ロードマップ</strong>を依頼し、陳腐化を回避してください。</p>`;
 }
 
 function buildPreventiveMaintenance(topic: TopicSpec, model: typeof models[0] | null): string {
   return `
-<h3>جدول صيانة وقائية - معدات الصنفرة</h3>
+<h3>サンディング設備の予防整備スケジュール</h3>
 <table class="spec-table">
-  <thead><tr><th>التكرار</th><th>الإجراء</th><th>الأداة/المعيار</th></tr></thead>
+  <thead><tr><th>頻度</th><th>作業</th><th>工具/基準</th></tr></thead>
   <tbody>
-    <tr><td>يومي (بداية الوردية)</td><td>فحص بصري للحزام/القرص، نظافة البكرات، اختبار شفط</td><td>قائمة تحقق موقعة</td></tr>
-    <tr><td>أسبوعي</td><td>تنظيف بكرات التوجيه/الشد، فحص محاذاة، تزييت محامل</td><td>دليل الماكينة</td></tr>
-    <tr><td>شهري</td><td>فحص وسادة التثبيت (هوك آند لوب/PSA)، معايرة RPM، فلترة الهواء</td><td>مقياس RPM، مقياس تدفق</td></tr>
-    <tr><td>ربع سنوي</td><td>استبدال وسادة التثبيت، فحص نظام الشفط كاملاً، معايرة الضغط</td><td>قطع غيار أصلية</td></tr>
-    <tr><td>سنوي</td><td>صيانة شاملة بواسطة فني معتمد، توثيق، شهادة سلامة</td><td>مزود الخدمة المعتمد</td></tr>
+    <tr><td>日次（シフト開始時）</td><td>ベルト/ディスクの目視、ローラー清掃、集じん試験</td><td>署名済みチェックリスト</td></tr>
+    <tr><td>週次</td><td>ガイドローラー/テンションローラーの清掃、アライメント確認、ベアリング潤滑</td><td>機械マニュアル</td></tr>
+    <tr><td>月次</td><td>パッド状態確認（フック&ループ/PSA）、RPMキャリブレーション、集じん路（エア路）の清掃</td><td>RPM計、流量計</td></tr>
+    <tr><td>四半期</td><td>パッド交換、集じんシステム全面検査、圧力キャリブレーション</td><td>純正部品</td></tr>
+    <tr><td>年次</td><td>認定技術者による全面整備、文書化、安全証書</td><td>認定サービス提供者</td></tr>
   </tbody>
 </table>
 
-<p>سجل الصيانة يمدد عمر الماكينة ويقلل التوقف غير المخطط بنسبة 40–60% (بيانات مصنعي معدات صنفرة).</p>`;
+<p>整備記録は機械の寿命を延ばし、予期しない停止を 40–60% 削減します（サンディング機械メーカーのデータ）。</p>`;
 }
 
 function buildSupportEscalation(): string {
   return `
-<h3>متى تتصعد للدعم الفني؟</h3>
+<h3>技術サポートに相談するタイミング</h3>
 <ul class="plain-links">
-  <li>عطل متكرر بنفس النمط بعد تطبيق الحلول القياسية</li>
-  <li>منتج جديد لا يتوافق مع المواصفة المتعاقد عليها</li>
-  <li>انحراف أداء > 20% عن الدفعة المرجعية</li>
-  <li>حاجة لتعديل مواصفة (غرِت، قاعدة، أبعاد) أثناء التعاقد</li>
+  <li>標準対策後も同一パターンで不具合が繰り返される場合</li>
+  <li>新製品が契約仕様に適合しない場合</li>
+  <li>基準ロットとの性能乖離が 20% を超える場合</li>
+  <li>契約中の仕様変更（砥粒、基材、寸法）が必要な場合</li>
 </ul>
 
-<h3>قنوات الدعم</h3>
+<h3>サポートチャネル</h3>
 <ul class="plain-links">
-  <li>البريد الإلكتروني: <a href="mailto:motai-01@motaiabrasive.com">motai-01@motaiabrasive.com</a></li>
-  <li>واتساب: <a href="https://wa.me/8618118635597" rel="nofollow noopener" target="_blank">+86 181 1863 5597</a></li>
-  <li>نموذج الاستفسار: <a href="/quote">صفحة طلب عرض السعر</a></li>
+  <li>メール： <a href="mailto:motai-01@motaiabrasive.com">motai-01@motaiabrasive.com</a></li>
+  <li>WhatsApp： <a href="https://wa.me/8618118635597" rel="nofollow noopener" target="_blank">+86 181 1863 5597</a></li>
+  <li>お問い合わせフォーム： <a href="/quote">見積依頼ページ</a></li>
 </ul>
 
-<p>أرفق دائماً: صور العطل، رقم الدفعة، المواصفة، ظروف التشغيل (ماكينة، مادة، معلمات).</p>`;
+<p>必ず添付：不具合の写真、ロット番号、仕様、作業条件（機械、材料、パラメータ）。</p>`;
 }
 
-function buildCulturalNotes(gccCountry: typeof gccCountries[0] | undefined): string {
-  if (!gccCountry || gccCountry.code === 'general-gcc') return '';
+function buildCulturalNotes(jaRegion: typeof jaRegions[0] | undefined): string {
+  if (!jaRegion || jaRegion.code === 'general-jp') return '';
 
   const notes: Record<string, string[]> = {
-    'saudi-arabia': ['أسبوع العمل: الأحد–الخميس', 'اللغة الرسمية: العربية، الإنجليزية في الأعمال', 'تحية: "السلام عليكم"، مصافحة', 'القرارات: هرمية، صاحب القرار النهائي هو المفتاح', 'رمضان: ساعات عمل مخفضة، تجنب الاجتماعات ظهراً'],
-    'uae': ['أسبوع العمل: الاثنين–الجمعة (حكومي)، الأحد–الخميس (كثير من الخاص)', 'بيئة متعددة الثقافات، الإنجليزية لغة الأعمال', 'بطاقات العمل: تبادلها بيمين، اقرأها قبل وضعها', 'المناطق الحرة: قوانين مختلفة، تحقق من الجهة المنظمة'],
-    'qatar': ['أسبوع العمل: الأحد–الخميس', 'قطرنة: أفضلية للمنتجات/الخدمات المحلية في المناقصات الحكومية', 'اللغة: العربية رسمية، الإنجليزية شائعة', 'العلاقات الشخصية مهمة جداً في بناء الثقة'],
-    'kuwait': ['أسبوع العمل: الأحد–الخميس', 'القطاع الخاص يغلق ظهر الجمعة', 'التفاوض: صبور، يبنى على الثقة طويلة المدى', 'القرارات قد تحتاج موافقات متعددة'],
-    'bahrain': ['أسبوع العمل: الأحد–الخميس', 'بيئة أعمال منفتحة، إجراءات مبسطة', 'اللغة: عربية/إنجليزية', 'الشبكات الشخصية (الواسطة) فعالة جداً'],
-    'oman': ['أسبوع العمل: الأحد–الخميس', 'التعمين: نسبة توطين إلزامية في الشركات', 'القرارات: تشاركية، استشارة واسعة', 'احترام التسلسل الهرمي والسن'],
+    'kanto': ['週5日勤務が標準（土日休）、祝日は営業停止', 'ビジネス日本語が必須、英語でも対応可', '面会時は名刺を両手で、読みを事前に確認', '判断は階層的、最終決定者は重要'],
+    'kansai': ['週5日勤務が標準、造船・自動車産業の拠点', '丁寧な仕様書と品質文書が重視される', '名刺交換の作法が重要、初回面会では丁寧さを', '関西の商習慣は柔軟だが品質基準は厳格'],
+    'tohoku': ['週5日勤務、製造・農業の拠点', '寒冷期の保管条件（接着剥離防止）を事前確認', '判断は慎重で、関係構築に時間がかかる', '安全への意識が高い'],
+    'chubu': ['週5日勤務、自動車産業の集積地（愛知）', '寸法公差と安定供給が最重要視される', '定期訪問と実績報告が信頼構築に有効', '品質文書の正確性が問われる'],
+    'chugoku': ['週5日勤務、造船・海洋産業の拠点', '溶接面処理の基準（JIS Z 2372 等）を事前確認', '関係者は少人数で密接、丁寧な対応が重要', '通関書類の事前準備が鍵'],
+    'kyushu': ['週5日勤務、北九州造船・海洋産業', '北九州は鉄鋼・造船の中心地', '防食塗装前の表面準備基準を事前確認', '九州の商習慣は誠実・慎重、長期的関係重視'],
   };
 
-  const countryNotes = notes[gccCountry.code] || [];
+  const regionNotes = notes[jaRegion.code] || [];
 
   return `
-<h3>ملاحظات ثقافية وتجارية - ${gccCountry.name}</h3>
+<h3>${jaRegion.name}地域の商務メモ</h3>
 <ul class="plain-links">
-  ${countryNotes.map(n => `<li>${n}</li>`).join('')}
+  ${regionNotes.map(n => `<li>${n}</li>`).join('')}
 </ul>
 
-<p>هذه ملاحظات عامة. كل شركة وثقافة مؤسسية تختلف. ابنِ العلاقة على الوضوح، الالتزام بالمواعيد، والوفاء بالوعود.</p>`;
+<p>一般的なメモです。各企業・組織文化は異なります。関係を明確さ、納期遵守、約束の実行で築いてください。</p>`;
 }
 
-function buildDisclaimer(gccCountry: typeof gccCountries[0] | undefined): string {
-  const countryName = gccCountry?.name || 'الخليج العربي';
+function buildDisclaimer(jaRegion: typeof jaRegions[0] | undefined): string {
+  const regionName = jaRegion?.name === '全国' ? '日本' : (jaRegion ? `${jaRegion.name}地域` : '日本');
 
   return `
 <div class="disclaimer" style="background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:1rem;margin:1.5rem 0;">
-  <h3>إخلاء مسؤولية مهم</h3>
+  <h3>重要免責事項</h3>
   <ul>
-    <li>موتاى <strong>لا تملك مخزوناً محلياً</strong>، ولا مكتباً، ولا كياناً قانونياً، ولا موزعاً معتمداً حصرياً في ${countryName}.</li>
-    <li>جميع الشحنات <strong>تصدر من مصنعنا في الصين</strong> (هوبي، شيانينغ) وفق شروط INCOTERTS المتفق عليها.</li>
-    <li>مهل التوريد، الأسعار، MOQ، والشهادات <strong>تخضع للعرض التجاري النهائي</strong> بعد مراجعة المواصفة الكاملة.</li>
-    <li>الامتثال لـ SASO/ESMA/GSO <strong>مسؤولية المستورد</strong>؛ نحن نوفر شهادات المصنع (COC/COA) وفق المواصفة.</li>
-    <li>أي إشارة إلى "موزع محلي" أو "تسليم من المخزن في ${countryName}" <strong>غير صحيحة</strong> ما لم تصدر كتابياً من موتاى.</li>
+    <li>墨泰は${regionName}に<strong>当地在庫・拠点・法人</strong>も<strong>専属代理店</strong>も保有していません。</li>
+    <li>全荷物は合意した INCOTERMS に基づき<strong>中国の工場（湖北省咸寧市）から出荷</strong>されます。</li>
+    <li>納期、価格、MOQ、証書は完全な仕様の確認後に<strong>最終商業見積りで確定</strong>されます。</li>
+    <li>JIS/JANSI 適合は<strong>輸入者の責任</strong>です。当社は工場証書（COC/COA）を仕様に基づき提供します。</li>
+    <li>「当地販売店」または「${regionName}の在庫からの納品」への言及は、墨泰からの書面がない限り<strong>不正確です</strong>。</li>
   </ul>
 </div>`;
 }
 
 function buildGlossaryCard(topic: TopicSpec): string {
   const terms = [
-    { term: 'درجة الغرِت (Grit)', def: 'رقم معياري (FEPA P) يدل على حجم الحبيبات. رقم أقل = أخشن، رقم أعلى = أنعم' },
-    { term: 'القاعدة (Backing)', def: 'المادة الحاملة للحبيبات: قماش (مرن)، ورق (ثابت)، بوليمر (مقاوم رطوبة)' },
-    { term: 'الرابطة (Resin Bond)', def: 'المادة اللاصقة التي تثبت الحبيبات على القاعدة. إسبنجية تتحمل الحرارة' },
-    { term: 'هوك آند لوب (Hook & Loop)', def: 'نظام تثبيت بخطاف وحلقة (فيلكرو) يسمح بتغيير القرص سريعاً' },
-    { term: 'لصق ذاتي (PSA)', def: 'قرص بوجه لاصق حساس للضغط، تركيب مرة واحدة على قاعدة لاصقة' },
-    { term: 'شبكي (Mesh)', def: 'قرص/حزام بفتحات لتفريغ الغبار، يقلل الانسداد ويحسن التشطيب' },
-    { term: 'الحد الأدنى للكمية (MOQ)', def: 'أقل كمية طلب يقبلها المورد في أمر إنتاج واحد' },
-    { term: 'مدة التوريد (Lead Time)', def: 'الوقت من اعتماد المواصفة النهائية حتى تسليم البضاعة في الميناء/المستودع' },
-    { term: 'OEM / العلامة الخاصة', def: 'إنتاج المنتج بشعار العميل وتغليفه، بموجب مواصفة واتفاقية مبرمة' },
+    { term: '砥粒（Grit）', def: '砥粒サイズの規格番号（FEPA P / JIS）。数字が小さいほど粗目、大きいほど細目' },
+    { term: '基材（Backing）', def: '砥粒を支える材料：布（柔軟）、紙（安定）、ポリマー（耐湿）' },
+    { term: '接着剤（Resin Bond）', def: '砥粒を基材に固定する粘着材料。耐熱性樹脂' },
+    { term: 'フック&ループ（Hook & Loop）', def: 'ベルクロ式取付システム。ディスクの素早い交換を可能に' },
+    { term: 'PSA（圧感型粘着）', def: '圧力で粘着するディスク。粘着ベースに一回の取付' },
+    { term: 'メッシュ（Mesh）', def: '穴あきディスク/ベルト。粉塵排出でローディング低減、仕上げ向上' },
+    { term: '最小注文数量（MOQ）', def: 'サプライヤーが1回の生産で受ける最小数量' },
+    { term: '納期（Lead Time）', def: '最終仕様承認から港/倉庫納品までの期間' },
+    { term: 'OEM / 自社ブランド', def: 'クライアントのロゴと包装で製品を製造。書面仕様と契約に基づき' },
   ];
 
   return `
 <div class="info-box glossary-card">
-  <h3>بطاقة مصطلحات سريعة</h3>
+  <h3>用語クイックカード</h3>
   <dl>
     ${terms.map(t => `<dt>${t.term}</dt><dd>${t.def}</dd>`).join('')}
   </dl>
@@ -1940,36 +1940,36 @@ function buildGlossaryCard(topic: TopicSpec): string {
 function buildInquiryTemplate(topic: TopicSpec): string {
   return `
 <div class="info-box inquiry-template">
-  <h3>نموذج طلب عرض سعر (نسخ، ملء، إرسال)</h3>
-  <pre style="background:#1e293b;color:#e2e8f0;padding:1rem;border-radius:8px;overflow-x:auto;font-family:monospace;font-size:0.85rem;line-height:1.6;">منتج: [اسم المنتج/العائلة]
-مقاس: [مثال: 533×75 مم أو 5 إنش]
-غرِت: [مثال: 80، 120، 240]
-حبيبات: [أكسيد ألومنيوم / زركونيا / سيراميك / غير محدد]
-قاعدة: [قماش / ورق / بوليمر / غير محدد]
-تثبيت: [هوك آند لوب / PSA / شبكي / غير محدد]
-كمية: [وحدات / شهر أو طلب واحد]
-تكرار: [شهري / ربع سنوي / سنوي / لمرة واحدة]
-تطبيق: [مثال: ستانلس ستيل، إزالة لحام، تشطيب نهائي]
-ماكينة: [طراز الماكينة + طريقة الوصل للأحزمة]
-تغليف: [قياسي / OEM - أرفق ملفات الشعار]
-شحن إلى: [الميناء / المدينة / الدولة]
-دفع: [LC / TT / شروط أخرى]
-شهادات: [COC / COA / SASO / ESMA / GSO / غير مطلوب]
-ملاحظات: [أي متطلبات خاصة]</pre>
-  <p><a href="/quote" class="button button--primary">إرسال عبر النموذج الإلكتروني</a></p>
+  <h3>見積依頼テンプレート（コピーして記入・送信）</h3>
+  <pre style="background:#1e293b;color:#e2e8f0;padding:1rem;border-radius:8px;overflow-x:auto;font-family:monospace;font-size:0.85rem;line-height:1.6;">製品: [製品名/ファミリー]
+寸法: [例：533×75 mm または 5 inch]
+砥粒: [例：80、120、240]
+砥粒タイプ: [酸化アルミニウム / ジルコニアアルミナ / セラミック / 未定]
+基材: [布 / 紙 / ポリマー / 未定]
+取付: [フック&ループ / PSA / メッシュ / 未定]
+数量: [個/月 または 一括]
+頻度: [月次 / 四半期 / 年次 / 一発]
+用途: [例：ステンレス、溶接ビード除去、最終仕上げ]
+機械: [機械タイプ + ベルトの場合はジョイント方式]
+包装: [標準 / OEM - ロゴファイル添付]
+出荷先: [港 / 都市 / 国]
+決済: [LC / TT / その他]
+証書: [COC / COA / JIS / JANSI / 不要]
+メモ: [特別な要件]</pre>
+  <p><a href="/quote" class="button button--primary">フォームから送信</a></p>
 </div>`;
 }
 
 function buildContactInfo(): string {
   return `
 <div class="contact-info">
-  <h3>تواصل معنا</h3>
+  <h3>お問い合わせ</h3>
   <dl class="spec-dl">
-    <div><dt>البريد الإلكتروني</dt><dd><a href="mailto:motai-01@motaiabrasive.com">motai-01@motaiabrasive.com</a></dd></div>
-    <div><dt>واتساب</dt><dd><a href="https://wa.me/8618118635597" rel="nofollow noopener" target="_blank">+86 181 1863 5597</a></dd></div>
-    <div><dt>الهاتف</dt><dd>+86 181 1863 5597</dd></div>
-    <div><dt>العنوان</dt><dd>رقم 88، شارع يولي، مدينة جونشوي، مقاطعة تونغتشنغ، شياننغ، هوبي، الصين</dd></div>
-    <div><dt>ساعات الاستجابة</dt><dd>أيام العمل: 24 ساعة | عطلة نهاية الأسبوع: 48 ساعة</dd></div>
+    <div><dt>メール</dt><dd><a href="mailto:motai-01@motaiabrasive.com">motai-01@motaiabrasive.com</a></dd></div>
+    <div><dt>WhatsApp</dt><dd><a href="https://wa.me/8618118635597" rel="nofollow noopener" target="_blank">+86 181 1863 5597</a></dd></div>
+    <div><dt>電話</dt><dd>+86 181 1863 5597</dd></div>
+    <div><dt>住所</dt><dd>中国 湖北省 咸寧市 通城県 軍水鎮 玉里大道 88号</dd></div>
+    <div><dt>対応目安</dt><dd>営業日：24時間以内 | 週末：48時間以内</dd></div>
   </dl>
 </div>`;
 }
@@ -1979,13 +1979,13 @@ function buildFAQSection(
   model: typeof models[0] | null,
   productCat: typeof productCategories[0] | undefined,
   industry: typeof industries[0] | undefined,
-  gccCountry: typeof gccCountries[0] | undefined
+  jaRegion: typeof jaRegions[0] | undefined
 ): string {
-  const faqs = buildFAQ(topic, model, productCat, industry, gccCountry);
+  const faqs = buildFAQ(topic, model, productCat, industry, jaRegion);
 
   if (faqs.length === 0) return '';
 
-  let html = '<h2>الأسئلة الشائعة</h2>\n<dl class="faq-list">';
+  let html = '<h2>よくある質問</h2>\n<dl class="faq-list">';
   faqs.forEach(faq => {
     html += `<dt>${faq.q}</dt><dd>${faq.a}</dd>`;
   });
@@ -2000,11 +2000,11 @@ function buildCTASection(topic: TopicSpec, model: typeof models[0] | null, produ
   return `
 <div class="cta-band" style="background:#1e3a5f;color:#fff;padding:2rem;border-radius:12px;margin:2rem 0;text-align:center;">
   <h3>${cta.text}</h3>
-  <a href="${targetUrl}" class="button button--primary" style="background:#fff;color:#1e3a5f;border:none;padding:0.75rem 1.5rem;border-radius:6px;font-weight:600;text-decoration:none;display:inline-block;margin-top:1rem;">${cta.type === 'hard' ? 'اطلب عرض سعر الآن' : 'تواصل مع فريقنا الفني'}</a>
+  <a href="${targetUrl}" class="button button--primary" style="background:#fff;color:#1e3a5f;border:none;padding:0.75rem 1.5rem;border-radius:6px;font-weight:600;text-decoration:none;display:inline-block;margin-top:1rem;">${cta.type === 'hard' ? '今すぐ見積依頼' : '技術チームへ相談'}</a>
 </div>`;
 }
 
-// ========== وظائف مساعدة ==========
+// ========== 辅助函数 ==========
 
 function buildInternalLinks(
   topic: TopicSpec,
@@ -2014,42 +2014,42 @@ function buildInternalLinks(
 ) {
   const links = [];
 
-  // 1. منتج/عائلة منتج
+  // 1. 产品/产品族
   if (productCat) {
     links.push({
       url: `/products/${topic.productFamily}`,
       anchorText: productCat.name,
-      description: `صفحة عائلة ${productCat.name} مع المواصفات الكاملة وخيارات التخصيص`,
+      description: `${productCat.name} ファミリーページ（完全仕様とカスタマイズオプション）`,
     });
   }
 
-  // 2. صناعة/تطبيق
+  // 2. 行业/应用
   if (industry) {
     links.push({
       url: `/industries/${topic.industry}`,
       anchorText: industry.name,
-      description: `حلول ${industry.name} الكاملة: منتجات، تحديات، ودراسات حالة`,
+      description: `${industry.name} のソリューション：製品、課題、実績`,
     });
   }
 
-  // 3. طلب عرض سعر
+  // 3. 请求报价
   links.push({
     url: '/quote',
-    anchorText: 'طلب عرض سعر جملة',
-    description: 'نموذج استفسار موحد لتحديد المواصفة والحصول على عرض خلال 24 ساعة',
+    anchorText: '卸売見積依頼',
+    description: '24時間以内に仕様確定と見積回答を行う統一のお問い合わせフォーム',
   });
 
-  // 4. موارد إضافية
+  // 4. 更多资源
   links.push({
     url: '/resources/abrasive-grit-guide',
-    anchorText: 'دليل اختيار درجات الحبيبات',
-    description: 'جدول مرجعي يربط درجة الغرِت بمهمة التشطيب الأساسية',
+    anchorText: '砥粒選択ガイド',
+    description: '砥粒グレードと仕上げ任務の対応表',
   });
 
   links.push({
     url: '/resources/oem-packaging-guide',
-    anchorText: 'دليل تجهيز طلب OEM',
-    description: 'خطوات إعداد ملف العلامة التجارية والتغليف لتسريع الاعتماد',
+    anchorText: 'OEM発注準備ガイド',
+    description: 'ブランドファイルと包装を準備し承認を速める手順',
   });
 
   return links.slice(0, 5);
@@ -2058,12 +2058,12 @@ function buildInternalLinks(
 function buildExternalLinks(
   topic: TopicSpec,
   industry: typeof industries[0] | undefined,
-  gccCountry: typeof gccCountries[0] | undefined
+  jaRegion: typeof jaRegions[0] | undefined
 ) {
   const links = [];
   const year = new Date().getFullYear();
 
-  // معايير دولية
+  // 国际标准
   links.push({
     url: 'https://www.fepa-abrasives.org',
     anchorText: 'FEPA - Federation of European Producers of Abrasives',
@@ -2073,22 +2073,22 @@ function buildExternalLinks(
 
   links.push({
     url: 'https://www.iso.org/standard/74568.html',
-    anchorText: 'ISO 6344:2022 - Abrasive grain size analysis',
+    anchorText: 'ISO 6344 - Abrasive grain size analysis',
     source: 'ISO',
     year: 2022,
   });
 
-  // معايير خليجية
-  if (gccCountry && gccCountry.code !== 'general-gcc') {
+  // 日本規格
+  if (jaRegion && jaRegion.code !== 'general-jp') {
     const regulators: Record<string, { url: string; name: string }> = {
-      'saudi-arabia': { url: 'https://www.saso.gov.sa', name: 'SASO - Saudi Standards, Metrology and Quality Organization' },
-      'uae': { url: 'https://www.esma.gov.ae', name: 'ESMA - Emirates Authority for Standardization and Metrology' },
-      'qatar': { url: 'https://www.moc.gov.qa', name: 'Qatar Standards (MoC)' },
-      'kuwait': { url: 'https://www.kowsar.kw', name: 'KOWSAR - Kuwait Institute for Scientific Research' },
-      'bahrain': { url: 'https://www.bahrain.bh', name: 'Bahrain Standards' },
-      'oman': { url: 'https://www.dgssm.gov.om', name: 'DGSSM - Oman Directorate General of Specifications and Measurements' },
+      'kanto': { url: 'https://www.jisc.go.jp', name: 'JISC - 日本工業標準調査会' },
+      'kansai': { url: 'https://www.jisc.go.jp', name: 'JISC - 日本工業標準調査会' },
+      'tohoku': { url: 'https://www.jisc.go.jp', name: 'JISC - 日本工業標準調査会' },
+      'chubu': { url: 'https://www.jisc.go.jp', name: 'JISC - 日本工業標準調査会' },
+      'chugoku': { url: 'https://www.jisc.go.jp', name: 'JISC - 日本工業標準調査会' },
+      'kyushu': { url: 'https://www.jisc.go.jp', name: 'JISC - 日本工業標準調査会' },
     };
-    const reg = regulators[gccCountry.code];
+    const reg = regulators[jaRegion.code];
     if (reg) {
       links.push({
         url: reg.url,
@@ -2099,7 +2099,7 @@ function buildExternalLinks(
     }
   }
 
-  // سلامة مهنية
+  // 职业安全
   links.push({
     url: 'https://www.osha.gov/abrasive-wheels',
     anchorText: 'OSHA - Abrasive Wheels and Tools Safety',
@@ -2115,64 +2115,64 @@ function buildFAQ(
   model: typeof models[0] | null,
   productCat: typeof productCategories[0] | undefined,
   industry: typeof industries[0] | undefined,
-  gccCountry: typeof gccCountries[0] | undefined
+  jaRegion: typeof jaRegions[0] | undefined
 ) {
-  const productName = model?.name || productCat?.name || getProductFamilyNameAr(topic.productFamily);
+  const productName = model?.name || productCat?.name || getProductFamilyNameJa(topic.productFamily);
   const industryName = industry?.name || '';
-  const countryName = gccCountry?.name || '';
+  const regionName = jaRegion?.name === '全国' ? '日本' : (jaRegion ? `${jaRegion.name}地域` : '日本');
 
   const baseFAQs = [
     {
-      q: `ما الفرق بين ${productName} والمنتجات المشابهة؟`,
-      a: `الفرق في الشكل (حزام/قرص/إسفنج)، نظام التثبيت، ونطاق الغرِت. ${productName} مصمم لـ ${getMainApplication(topic.productFamily)}. للتفاصيل راجع جدول المقارنة أعلاه.`,
+      q: `${productName} と類似製品の違いは？`,
+      a: `違いは形状（ベルト/ディスク/スポンジ）、取付システム、砥粒範囲にあります。${productName} は ${getMainApplication(topic.productFamily)} に設計されています。詳細は上の比較表を参照。`,
     },
     {
-      q: `كيف أحدد درجة الغرِت المناسبة لـ ${industryName}؟`,
-      a: `يعتمد على مرحلة العمل: إزالة (40–80)، تشطيب متوسط (100–180)، لمسة نهائية (240–400+). المادة تهم أيضاً: معدن صلب → زركونيا/سيراميك، خشب/عام → أكسيد ألومنيوم.`,
+      q: `${industryName} に合う砥粒グレードはどう決める？`,
+      a: `工程が基準：除去（40–80）、中間仕上げ（100–180）、最終（240–400+）。材料も重要：高硬度金属 → ジルコニアアルミナ/セラミック、木材/汎用 → 酸化アルミニウム。`,
     },
     {
-      q: `ما المعلومات المطلوبة لطلب عرض سعر دقيق؟`,
-      a: `المنتج، المقاس، الغرِت، الحبيبات، القاعدة، التثبيت، الكمية، التطبيق، الماكينة، وجهة الشحن، شروط الدفع، شهادات مطلوبة. النموذج الكامل في قسم "نموذج طلب عرض سعر".`,
+      q: `正確な見積依頼に必要な情報は？`,
+      a: `製品、寸法、砥粒、砥粒タイプ、基材、取付、数量、用途、機械、出荷先、決済条件、必要証書。完全なテンプレートは「見積依頼テンプレート」セクション参照。`,
     },
     {
-      q: `ما هو الحد الأدنى لكمية الطلب (MOQ)؟`,
-      a: `يُحدد لكل مواصفة على حدة حسب المنتج، التخصيص، والتغليف. بشكل عام: المنتجات القياسية MOQ أقل، OEM/تخصيص أعلى. اطلب العرض للحصول على الرقم الدقيق.`,
+      q: `最小発注数量（MOQ）は？`,
+      a: `仕様ごとに製品、カスタマイズ、包装で決まります。一般的に：標準製品は低め、OEM/カスタムは高め。正確な数値は見積りに依頼。`,
     },
     {
-      q: `كم تستغرق مدة التوريد (Lead Time)؟`,
-      a: `تُحدد المدة في عرض السعر بعد اعتماد المواصفة والعينة، وتشمل الإنتاج ثم الشحن (بحري إلى ${countryName || 'الخليج'} أو جوي حسب المتطلبات). الرقم الدقيق يُرفق مع العرض.`,
+      q: `納期（Lead Time）は？`,
+      a: `仕様とサンプル承認後に見積りで確定：生産 + 輸送（${regionName} までの海上または空輸）。正確な数値は見積りに付随。`,
     },
     {
-      q: `هل تدعمون توريد OEM / علامة تجارية خاصة؟`,
-      a: `نعم. نحتاج: ملف شعار فيكتور، رسومات تغليف، لغات الأسواق، مواصفات طباعة. العملية: عينة → موافقة → إنتاج كمي. التفاصيل في قسم "دليل الجملة و OEM".`,
+      q: `OEM/自社ブランド対応は？`,
+      a: `可能。必要：ベクトルロゴファイル、包装図面、市場言語、印刷仕様。工程：サンプル → 承認 → 量産。詳細は「卸売とOEMガイド」参照。`,
     },
     {
-      q: `هل يمكنكم توفير شهادات SASO / ESMA / GSO؟`,
-      a: `نوفر شهادة مطابقة المصنع (COC) وشهادة تحليل (COA) وفق مواصفة المنتج. اعتماد SASO/ESMA/GSO في بلد الاستيراد مسؤولية المستورد، ونحن نتعاون بتقديم الوثائق المطلوبة.`,
+      q: `JIS / JANSI 証書の提供は？`,
+      a: `工場適合証書（COC）と分析証明書（COA）を製品仕様に準拠して提供。JIS/JANSI 適合の最終責任は輸入者にあります。必要書類の準備に協力します。`,
     },
   ];
 
-  // إضافة FAQ خاص بالنوع
+  // 添加类型专属 FAQ
   const typeFAQs: Record<string, Array<{q: string, a: string}>> = {
-    'gcc-regional-sourcing': [
-      { q: `هل لديكم مخزن أو مكتب في ${countryName}؟`, a: `لا. جميع الشحنات تصدر من مصنعنا في الصين (هوبي، شيانينغ). لا نملك مخزوناً محلياً، مكتباً، أو موزعاً حصرياً في ${countryName}.` },
-      { q: `ما الميناء الأفضل للاستيراد إلى ${countryName}؟`, a: `الميناء الرئيسي: ${getMainPort(gccCountry?.code)}. ننسق مع وكيل الشحن لتخليص فعّال.` },
+    'jp-regional-sourcing': [
+      { q: `${regionName} に倉庫または拠点がありますか？`, a: `ありません。全荷物は中国の工場（湖北省咸寧市）から出荷します。当地に在庫・拠点・専属代理店はありません。` },
+      { q: `${regionName} への輸入に最適な港は？`, a: `主要港湾：${getMainPort(jaRegion?.code)}。通関業者と調整してスムーズな通関を行います。` },
     ],
     'troubleshooting': [
-      { q: `الحزام ينحرف باستمرار، ما الحل؟`, a: `افحص: محاذاة البكرات، اتجاه الوصل، تآكل البكرات، نظافة الأسطح. 90% من حالات الانحراف تحل بمحاذاة صحيحة وبكرات نظيفة.` },
-      { q: `القرص يسد (Loading) بسرعة، ماذا أفعل؟`, a: `جرّب: 1) قرص شبكي للشفط الأفضل 2) تقليل الضغط 3) مبرد/ماء إن أمكن 4) درجة غرِت أخشن للمرحلة الأولى 5) تنظيف فلتر الشفط.` },
+      { q: `ベルトが繰り返し偏位します、どうしますか？`, a: `確認：ローラーアライメント、ジョイント方向、ローラー摩耗、面清掃。偏位90%は正しいアライメントと清潔なローラーで解決します。` },
+      { q: `ディスクが素早くローディングします、どうしますか？`, a: `試す：1) 集じん良好なメッシュディスク 2) 圧力軽減 3) 冷却 4) 初期工程の砥粒を粗目 5) 集じんフィルター清掃。` },
     ],
     'process-tutorial': [
-      { q: `هل يجب تنظيف السطح بين كل درجة غرِت؟`, a: `نعم، ضروري. بقايا الغرِت الخشن تخدش السطح عند الانتقال للدرجة الأنعم. استخدم هواء مضغوط أو ممسحة نظيفة جافة.` },
+      { q: `砥粒を毎回変える間に表面清掃は必要ですか？`, a: `はい、必須です。粗い砥粒の残留は細いグレードでの作業時に表面を傷めます。圧縮空気または清潔な乾いた布を使用。` },
     ],
   };
 
   const extraFAQs = typeFAQs[topic.articleType] || [];
 
-  // 行业专属 FAQ（site.ts industries.faq，7 行业全覆盖）：让 FAQ 随行业变化
+  // 行业专属 FAQ（site.ts industries.faq，全行业）：FAQ随行业变化
   const industryFAQs = industry?.faq?.map(f => ({ q: f.q, a: f.a })) || [];
 
-  // 型号专属 FAQ（来自 models.ts 的已验证数据）：让 FAQ 随型号变化
+  // 型号专属 FAQ（来自 models.ts 的已验证数据）：FAQ随型号变化
   const modelFAQs = model?.faq?.slice(0, 2).map(f => ({ q: f.q, a: f.a })) || [];
 
   // 种子滑窗：baseFAQs 7 条中取 4 条（窗口起点随 slug 变化）→ 同类型文章 FAQ 组合不同
@@ -2187,13 +2187,13 @@ function buildSpecsTable(topic: TopicSpec, model: typeof models[0] | null, produ
   if (!model) return undefined;
 
   return [
-    { المعلمة: 'المنتج', القيمة: model?.name || productCat?.name || getProductFamilyNameAr(topic.productFamily) },
-    { المعلمة: 'المقاس', القيمة: model.sizeAr },
-    { المعلمة: 'نطاق الغرِت', القيمة: model.gritRange.join(' – ') },
-    { المعلمة: 'النوع', القيمة: model.type === 'belt' ? 'حزام' : 'قرص' },
-    { المعلمة: 'القاعدة', القيمة: model.backing },
-    { المعلمة: 'التثبيت', القيمة: model.attachment },
-    { المعلمة: 'التطبيقات', القيمة: model.useCases.join('، ') },
+    { パラメータ: '製品', 値: model?.name || productCat?.name || getProductFamilyNameJa(topic.productFamily) },
+    { パラメータ: '寸法', 値: model.sizeJa },
+    { パラメータ: '砥粒範囲', 値: model.gritRange.join(' – ') },
+    { パラメータ: 'タイプ', 値: model.type === 'belt' ? 'ベルト' : 'ディスク' },
+    { パラメータ: '基材', 値: model.backing },
+    { パラメータ: '取付', 値: model.attachment },
+    { パラメータ: '用途', 値: model.useCases.join('、') },
   ];
 }
 
@@ -2202,56 +2202,56 @@ function buildInfoBoxes(
   model: typeof models[0] | null,
   productCat: typeof productCategories[0] | undefined,
   industry: typeof industries[0] | undefined,
-  gccCountry: typeof gccCountries[0] | undefined
+  jaRegion: typeof jaRegions[0] | undefined
 ) {
   const boxes = [];
-  const productName = model?.name || productCat?.name || getProductFamilyNameAr(topic.productFamily);
+  const productName = model?.name || productCat?.name || getProductFamilyNameJa(topic.productFamily);
 
   // Quick Answer
   boxes.push({
     type: 'quick-answer' as const,
-    title: 'إجابة سريعة',
+    title: 'クイック回答',
     content: [
-      `المنتج: ${productName}`,
-      `الغرِت الشائع: ${getCommonGritRange(topic.productFamily)}`,
-      `التطبيق الرئيسي: ${getMainApplication(topic.productFamily)}`,
-      `نظام التثبيت: ${model?.attachment || 'هوك آند لوب / PSA / شبكي'}`,
+      `製品：${productName}`,
+      `一般砥粒：${getCommonGritRange(topic.productFamily)}`,
+      `主要用途：${getMainApplication(topic.productFamily)}`,
+      `取付システム：${model?.attachment || 'フック&ループ / PSA / メッシュ'}`,
     ],
   });
 
   // Spec Checklist
   boxes.push({
     type: 'spec-checklist' as const,
-    title: 'قائمة مواصفات للتحقق قبل الطلب',
+    title: '発注前の仕様確認リスト',
     content: [
-      '☐ المنتج والعائلة',
-      '☐ المقاس الدقيق (مم/إنش)',
-      '☐ درجة/درجات الغرِت (FEPA P)',
-      '☐ نوع الحبيبات (Al₂O₃ / ZrO₂ / سيراميك / SiC)',
-      '☐ القاعدة (قماش / ورق / بوليمر)',
-      '☐ نظام التثبيت (هوك آند لوب / PSA / شبكي)',
-      '☐ الكمية والتكرار',
-      '☐ التطبيق / مادة القطعة',
-      '☐ طراز الماكينة + طريقة الوصل',
-      '☐ وجهة الشحن (الميناء/المدينة)',
-      '☐ متطلبات OEM / تغليف',
-      '☐ شهادات مطلوبة (COC/COA/SASO/ESMA/GSO)',
+      '☐ 製品とファミリー',
+      '☐ 正確な寸法（mm/inch）',
+      '☐ 砥粒グレード（FEPA P）',
+      '☐ 砥粒タイプ（Al₂O₃ / ZrO₂ / セラミック / SiC）',
+      '☐ 基材（布 / 紙 / ポリマー）',
+      '☐ 取付システム（フック&ループ / PSA / メッシュ）',
+      '☐ 数量と頻度',
+      '☐ 用途/加工材料',
+      '☐ 機械タイプ + ジョイント方式',
+      '☐ 出荷先（港/都市）',
+      '☐ OEM/包装要件',
+      '☐ 必要証書（COC/COA/JIS/JANSI）',
     ],
   });
 
   // Inquiry Checklist
   boxes.push({
     type: 'inquiry-checklist' as const,
-    title: 'نموذج استفسار جاهز للنسخ',
+    title: 'コピー可能な見積依頼テンプレート',
     content: [
-      `منتج: ${productName}`,
-      `مقاس: [املأ]`,
-      `غرِت: [املأ]`,
-      `كمية: [وحدات/فترة]`,
-      `تطبيق: [مادة + مرحلة]`,
-      `ماكينة: [طراز + تثبيت]`,
-      `شحن إلى: [ميناء/مدينة]`,
-      `دفع: [LC/TT/أخرى]`,
+      `製品：${productName}`,
+      `寸法：[記入]`,
+      `砥粒：[記入]`,
+      `数量：[単位/期間]`,
+      `用途：[材料 + 工程]`,
+      `機械：[タイプ + 取付]`,
+      `出荷先：[港/都市]`,
+      `決済：[LC/TT/その他]`,
     ],
   });
 
@@ -2259,11 +2259,11 @@ function buildInfoBoxes(
 }
 
 function buildInlineInfoBoxes(topic: TopicSpec, sectionIdx: number): string {
-  // إدراج معلوماتي في بداية المقال أو بعد أول H2
+  // 在文章开头或第一个 H2 后插入信息块
   if (sectionIdx === 0) {
     return `
-<div class="info-box quick-answer" style="background:#eff6ff;border-right:4px solid #3b82f6;padding:1rem;margin:1.5rem 0;border-radius:0 8px 8px 0;">
-  <strong>الخلاصة السريعة:</strong> هذا المقال يغطي ${topic.title}. النقاط الجوهرية في جدول المواصفات، قائمة التحقق، ونموذج الاستفسار أدناه.
+<div class="info-box quick-answer" style="background:#eff6ff;border-left:4px solid #3b82f6;padding:1rem;margin:1.5rem 0;border-radius:8px 0 0 8px;">
+  <strong>要点：</strong> 本記事では ${topic.title} を解説します。要点は仕様表、チェックリスト、見積依頼テンプレート（下）にまとめます。
 </div>`;
   }
   return '';
@@ -2274,18 +2274,18 @@ function buildVoiceSearchQueries(
   model: typeof models[0] | null,
   productCat: typeof productCategories[0] | undefined,
   industry: typeof industries[0] | undefined,
-  gccCountry: typeof gccCountries[0] | undefined
+  jaRegion: typeof jaRegions[0] | undefined
 ): string[] {
-  const productName = model?.name || productCat?.name || getProductFamilyNameAr(topic.productFamily);
+  const productName = model?.name || productCat?.name || getProductFamilyNameJa(topic.productFamily);
   const industryName = industry?.name || '';
-  const countryName = gccCountry?.name || '';
+  const regionName = jaRegion?.name === '全国' ? '日本' : (jaRegion ? `${jaRegion.name}地域` : '日本');
 
   return [
-    `ما أفضل ${productName} لـ ${industryName}؟`,
-    `كيف أختار درجة الغرِت لـ ${productName}؟`,
-    `كم سعر ${productName} بالجملة في ${countryName || 'الخليج'}؟`,
-    `أين أجد مورد ${productName} موثوق؟`,
-    `ما مواصفات ${productName} للـ ${industryName}؟`,
+    `最適な ${productName} は ${industryName} にどれ？`,
+    `${productName} の砥粒はどう選ぶ？`,
+    `${regionName} で ${productName} の卸価格は？`,
+    `信頼できる ${productName} サプライヤーはどこ？`,
+    `${productName} の ${industryName} 仕様は？`,
   ];
 }
 
@@ -2294,8 +2294,8 @@ function buildCTA(
   model: typeof models[0] | null,
   productCat: typeof productCategories[0] | undefined
 ) {
-  const productName = model?.name || productCat?.name || getProductFamilyNameAr(topic.productFamily);
-  const isHard = ['product-spec-detail', 'procurement-guide', 'wholesale-oem-guide', 'gcc-regional-sourcing', 'buying-guide', 'product-comparison', 'faq-buyers-guide'].includes(topic.articleType);
+  const productName = model?.name || productCat?.name || getProductFamilyNameJa(topic.productFamily);
+  const isHard = ['product-spec-detail', 'procurement-guide', 'wholesale-oem-guide', 'jp-regional-sourcing', 'buying-guide', 'product-comparison', 'faq-buyers-guide'].includes(topic.articleType);
   const cv = seedOf(topic.slug, 1_000_000);
   const pick = <T,>(arr: T[]) => pickBySeed(arr, cv, arr.length) ?? arr[0];
 
@@ -2303,9 +2303,9 @@ function buildCTA(
     return {
       type: 'hard' as const,
       text: pick([
-        `اطلب عرض سعر جملة لـ ${productName}. أرفق النوع، الأبعاد، درجة الغرِت، القاعدة/التثبيت، الكمية، التطبيق، وجهة الشحن، ومتطلبات OEM إن وجدت.`,
-        `لطلب جملة على ${productName}: حدد المقاس، الغرِت، نظام التثبيت، الكمية التقديرية، وجهة الشحن. سيراجع الفريق المواصفة ويرد بعرض سعر.`,
-        `جهز ملف المواصفة لـ ${productName} (الأبعاد، الغرِت، التثبيت، الكمية، وجهة الشحن) واطلب عرض الجملة — يتضمن خيارات OEM والتغليف عند الحاجة.`,
+        `${productName} の卸売見積を依頼してください。タイプ、寸法、砥粒、基材/取付、数量、用途、出荷先、OEM要件（あれば）を添付。`,
+        `${productName} の大量発注：寸法、砥粒、取付システム、推定数量、出荷先を指定。チームが仕様を確認し見積りを送ります。`,
+        `${productName} の仕様のまとめ（寸法、砥粒、取付、数量、出荷先）を準備し、卸売見積を依頼 — 必要なら OEM と包装オプション込み。`,
       ]),
       targetUrl: '/quote',
     };
@@ -2313,9 +2313,9 @@ function buildCTA(
     return {
       type: 'soft' as const,
       text: pick([
-        `هل لديك استفسار فني عن ${productName}؟ شاركنا مادة القطعة، مرحلة العمل، والماكينة لنوصي بالمواصفة الأنسب.`,
-        `اسأل فنيًا عن ${productName}: أرسل المادة، مرحلة التشغيل، ونوع الماكينة، وسنحدد الغرّت والقاعدة المناسبة دون افتراض.`,
-        `محتار في اختيار ${productName}؟ صِفتنا فنية: أرسَل تطبيقك (المادة + الماكينة + المرحلة) ونقترح المواصفة مع تسلسل الغرِت.`,
+        `${productName} の技術的なご質問はありますか？加工材料、工程、機械をお知らせください。最適な仕様を提案します。`,
+        `${productName} を技術者に質問：材料、工程、機械タイプを送ってください。最適な砥粒と基材を前提なく決定します。`,
+        `${productName} の選択でお悩みですか？技術サポート：用途（材料 + 機械 + 工程）を送ってください。砥粒シークエンス付き仕様を提案します。`,
       ]),
       targetUrl: '/quote',
     };
@@ -2325,64 +2325,64 @@ function buildCTA(
 function buildMetaDescription(topic: TopicSpec, model: typeof models[0] | null, productCat: typeof productCategories[0] | undefined): string {
   const productName = model?.name || productCat?.name || t(topic.productFamily);
   const industryName = industrySegments.find(i => i.code === topic.industry)?.name || '';
-  const countryName = gccCountries.find(c => c.code === topic.gccCountry)?.name || '';
+  const regionName = jaRegions.find(r => r.code === topic.jaRegion)?.name || '';
 
-  let desc = `${topic.title}. مواصفات ${productName}`;
+  let desc = `${topic.title}。${productName} の仕様`;
 
-  if (industryName) desc += ` لتطبيقات ${industryName}`;
-  if (countryName && countryName !== 'الخليج العربي') desc += ` في ${countryName}`;
+  if (industryName) desc += `、${industryName}向け`;
+  if (regionName && regionName !== '全国') desc += `、${regionName}地域`;
 
-  desc += `. درجات الغرِت، القاعدة، التثبيت، MOQ، مهلة التوريد، وخطوات الطلب.`;
+  desc += `。砥粒、基材、取付、MOQ、納期、発注手順。`;
 
   return desc.slice(0, 160);
 }
 
-// ========== دوال مساعدة بيانات ==========
+// ========== 数据辅助函数 ==========
 
 function getAlternativeProduct(productFamily: string): string {
   const map: Record<string, string> = {
-    'abrasive-belts': 'أقراص الصنفرة',
-    'flap-discs': 'أحزمة الصنفرة',
-    'sanding-discs': 'أحزمة الصنفرة',
-    'hook-loop': 'أقراص لاصق PSA',
-    'sanding-sponges': 'أقراص الصنفرة',
+    'abrasive-belts': '研磨ディスク',
+    'flap-discs': '研磨ベルト',
+    'sanding-discs': '研磨ベルト',
+    'hook-loop': 'PSA粘着ディスク',
+    'sanding-sponges': '研磨ディスク',
   };
-  return map[productFamily] || 'المنتج البديل';
+  return map[productFamily] || '代替製品';
 }
 
 function getMainApplication(productFamily: string): string {
   const map: Record<string, string> = {
-    'abrasive-belts': 'تشطيب الحواف والألواح (خشب/معدن) بماكينات الحزام',
-    'flap-discs': 'إزالة الصدأ، اللحام، وتشطيب المعادن بالزاوية',
-    'sanding-discs': 'تشطيب الأسطح المستوية، تجهيز للدهان',
-    'hook-loop': 'تغيير سريع للدرجات على الأسطح المستوية',
-    'sanding-sponges': 'الحواف، المنحنيات، والتشطيب اليدوي الدقيق',
+    'abrasive-belts': 'ベルト研削機でのエッジ・板材仕上げ（木/金属）',
+    'flap-discs': 'アングルでの錆・溶接ビード・金属仕上げ',
+    'sanding-discs': '平面仕上げ、塗装準備',
+    'hook-loop': '平面の素早い砥粒交換',
+    'sanding-sponges': 'エッジ、曲面、手作業の精密仕上げ',
   };
-  return map[productFamily] || 'تطبيقات صناعية عامة';
+  return map[productFamily] || '汎用工業用途';
 }
 
 function getWorkpieceMaterials(industryCode: string): string[] {
   const map: Record<string, string[]> = {
-    'woodworking': ['خشب ناعم', 'خشب صلب', 'MDF', 'خشب رقائقي', 'باركيه'],
-    'metalworking': ['فولاذ كربوني', 'ستانلس ستيل', 'ألومنيوم', 'حديد زهر', 'تيتانيوم'],
-    'automotive': ['صفائح فولاذ', 'ألومنيوم', 'بلاستيك مقوى', 'معادن مطلية'],
-    'shipbuilding': ['ألواح فولاذ بحرية', 'ستانلس ستيل', 'ألومنيوم بحري'],
-    'oil-gas': ['أنابيب كربونية', 'ستانلس ستيل', 'سبائك نيكيل', 'صلب عالي القوة'],
-    'construction': ['خشب', 'لوح جصي', 'أسمنت', 'حجر', 'بلاط'],
-    'general': ['متنوع'],
+    'woodworking': ['軟木', '硬木', 'MDF', '集成材', 'フローリング'],
+    'metalworking': ['炭素鋼', 'ステンレス', 'アルミ', '鋳鉄', 'チタン'],
+    'automotive': ['鋼板', 'アルミ', 'FRP', 'コーティング金属'],
+    'shipbuilding': ['海洋鋼板', 'ステンレス', '海洋アルミ'],
+    'oil-gas': ['炭素鋼パイプ', 'ステンレス', 'ニッケル合金', '高強度鋼'],
+    'construction': ['木材', '石膏ボード', 'セメント', '石材', 'タイル'],
+    'general': ['多材料'],
   };
-  return map[industryCode] || ['متنوع'];
+  return map[industryCode] || ['多材料'];
 }
 
 function getGrainTypes(productFamily: string): string[] {
   const map: Record<string, string[]> = {
-    'abrasive-belts': ['أكسيد الألومنيوم', 'زركونيا ألومينا', 'سيراميك', 'كربيد السيليكون (SiC)'],
-    'flap-discs': ['أكسيد الألومنيوم', 'زركونيا ألومينا', 'سيراميك'],
-    'sanding-discs': ['أكسيد الألومنيوم', 'كربيد السيليكون (SiC)', 'زركونيا ألومينا'],
-    'hook-loop': ['أكسيد الألومنيوم', 'كربيد السيليكون (SiC)'],
-    'sanding-sponges': ['أكسيد الألومنيوم', 'كربيد السيليكون (SiC)'],
+    'abrasive-belts': ['酸化アルミニウム', 'ジルコニアアルミナ', 'セラミック', '炭化シリコン（SiC）'],
+    'flap-discs': ['酸化アルミニウム', 'ジルコニアアルミナ', 'セラミック'],
+    'sanding-discs': ['酸化アルミニウム', '炭化シリコン（SiC）', 'ジルコニアアルミナ'],
+    'hook-loop': ['酸化アルミニウム', '炭化シリコン（SiC）'],
+    'sanding-sponges': ['酸化アルミニウム', '炭化シリコン（SiC）'],
   };
-  return map[productFamily] || ['أكسيد الألومنيوم'];
+  return map[productFamily] || ['酸化アルミニウム'];
 }
 
 function getCommonGritRange(productFamily: string): string {
@@ -2396,42 +2396,42 @@ function getCommonGritRange(productFamily: string): string {
   return map[productFamily] || '60–800';
 }
 
-function getProductFamilyNameAr(productFamily: string): string {
+function getProductFamilyNameJa(productFamily: string): string {
   const map: Record<string, string> = {
-    'abrasive-belts': 'أحزمة الصنفرة',
-    'flap-discs': 'أقراص كوت (Flap Discs)',
-    'sanding-discs': 'أقراص الصنفرة',
-    'hook-loop': 'أقراص هوك آند لوب',
-    'sanding-sponges': 'إسفنجيات صنفرة',
+    'abrasive-belts': '研磨ベルト',
+    'flap-discs': 'フラップディスク',
+    'sanding-discs': '研磨ディスク',
+    'hook-loop': 'フック&ループディスク',
+    'sanding-sponges': '研磨スポンジ',
   };
   return map[productFamily] || productFamily;
 }
 
-function getMainPort(countryCode: string | undefined): string {
+function getMainPort(regionCode: string | undefined): string {
   const ports: Record<string, string> = {
-    'saudi-arabia': 'جدة الإسلامي / الملك عبدالعزيز (الدمام)',
-    'uae': 'جبل علي',
-    'qatar': 'حمد',
-    'kuwait': 'الشويخ',
-    'bahrain': 'خليفة بن سلمان',
-    'oman': 'صلالة / صحار',
+    'kanto': '横浜',
+    'kansai': '神戸',
+    'tohoku': '仙台（石巻）',
+    'chubu': '名古屋',
+    'chugoku': '広島',
+    'kyushu': '北九州',
   };
-  return ports[countryCode || ''] || 'الميناء الرئيسي';
+  return ports[regionCode || ''] || '主要港湾';
 }
 
-function getLocalRegulator(countryCode: string): string {
+function getLocalRegulator(regionCode: string): string {
   const regulators: Record<string, string> = {
-    'saudi-arabia': 'SASO',
-    'uae': 'ESMA',
-    'qatar': 'Qatar Standards (MoC)',
-    'kuwait': 'KOWSAR',
-    'bahrain': 'Bahrain Standards',
-    'oman': 'DGSSM',
+    'kanto': 'JIS / JANSI',
+    'kansai': 'JIS / JANSI',
+    'tohoku': 'JIS / JANSI',
+    'chubu': 'JIS / JANSI',
+    'chugoku': 'JIS / JANSI',
+    'kyushu': 'JIS / JANSI',
   };
-  return regulators[countryCode] || 'الجهة المحلية للمعايير';
+  return regulators[regionCode] || '地域の規格当局';
 }
 
-// ========== دالة رئيسية للاختبار ==========
+// ========== 测试用主函数 ==========
 
 export function generateSampleArticles(count: number = 10): GeneratedArticle[] {
   const samples = topicMatrix.slice(0, count);

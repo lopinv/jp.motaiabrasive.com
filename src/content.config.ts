@@ -2,9 +2,9 @@ import { defineCollection, z } from 'astro:content';
 import { glob } from 'astro/loaders';
 
 /**
- * المقالات التقنية — مجموعة المحتوى الأساسية لتحسين AEO/SEO.
- * المخطط متساهل في الأطوال والأعداد عمدًا: البيانات مولّدة دفعات سابقة،
- * وجودة المحتوى يضبطها سكربت الفحص (quality-check) لا المخطط.
+ * 技术文章 — 面向日本站（jp.motaiabrasive.com）SEO/AEO 的核心内容集合。
+ * 有意在长度与数量上保持宽松：数据为历史批量生成，
+ * 内容质量由检查脚本（quality-check）而非 schema 来把控。
  */
 const articles = defineCollection({
   loader: glob({ pattern: '**/*.mdx', base: './src/content/articles' }),
@@ -18,7 +18,7 @@ const articles = defineCollection({
     productFamily: z.string().optional(),
     productModel: z.string().optional(),
     industry: z.string().optional(),
-    gccCountry: z.string().optional(),
+    jaRegion: z.string().optional(),
     keywords: z.array(z.string()).default([]),
     primaryKeyword: z.string().optional(),
     secondaryKeywords: z.array(z.string()).default([]),

@@ -25,16 +25,16 @@ const fepaGrades = [
   { p: 'P800', range: '超細', use: '金属超仕上げ' },
   { p: 'P1000', range: '超', use: '塗装研磨' },
   { p: 'P3000', range: '超', use: '高輝度最終研磨' },
-  { p: 'P5000', range: '超', use: '鏡面研磨' },
+  { p: 'P4000', range: '超', use: '鏡面研磨' },
+  { p: 'P5000', range: '超（非FEPA標準）', use: '鏡面研磨（拡張グレード）' },
 ];
 
 /*** 単位換算（客観的） ***/
 const unitConversions = [
-  { from: 'インチ', to: 'mm', ratio: '1インチ = 25.4mm' },
-  { from: '3インチ', to: '75mm', ratio: '3 × 25.4' },
-  { from: '4インチ', to: '100mm', ratio: '4 × 25.4' },
-  { from: '5インチ', to: '125mm', ratio: '5 × 25.4' },
-  { from: '6インチ', to: '150mm', ratio: '6 × 25.4' },
+  { from: '3インチ', to: '75mm', note: '標準名义直径（正確値 76.2mm）' },
+  { from: '4インチ', to: '100mm', note: '標準名义直径（正確値 101.6mm）' },
+  { from: '5インチ', to: '125mm', note: '標準名义直径（正確値 127mm）' },
+  { from: '6インチ', to: '150mm', note: '標準名义直径（正確値 152.4mm）' },
 ];
 
 /*** 基材タイプ（業界の事実） ***/
@@ -55,11 +55,11 @@ const grainTypes = [
 const specFaq = [
   {
     q: 'FEPA PとCAMIのグレードの違いは？',
-    a: 'FEPA Pは欧州/国際規格（世界中の大半でGCC含む採用）であり、CAMIは米国規格です。数値は完全に一致しません（例：P120 ≈ CAMI 120 だが P400 ≠ CAMI 400）。混同を避けるため、供給依頼にはFEPA Pの指定を推奨します。',
+    a: 'FEPA Pは欧州/国際規格（世界中の大半の国で採用）であり、CAMIは米国規格です。数値は完全に一致しません（例：P120 ≈ CAMI 120 だが P400 ≠ CAMI 400）。混同を避けるため、供給依頼にはFEPA Pの指定を推奨します。',
   },
   {
     q: '被削材に適する砥粒タイプはどう決めますか？',
-    a: '木材・一般作業：酸化アルミニウム。硬金属・重削り：ジルコニア。高性能工業工程：セラミック。石材・ガラス・超仕上げ：炭化ケイ素。',
+    a: '木材・一般作業：酸化アルミニウム。硬金属・重削り：ジルコニアアルミナ。高性能工業工程：セラミック。石材・ガラス・超仕上げ：炭化ケイ素。',
   },
   {
     q: '用途に最も適した基材は？',
@@ -80,7 +80,7 @@ const faqJsonLd = {
 
 <Layout
   title="研磨材の技術仕様 | FEPA表・基材・砥粒 | 墨泰研磨材"
-  description="包括的な技術リファレンス：FEPA P全グレード表、砥粒タイプ（酸化アルミニウム/ジルコニア/セラミック/SiC）、基材タイプ、インチ/mm換算。国際産業基準に基づく客観データ。"
+  description="包括的な技術リファレンス：FEPA P全グレード表、砥粒タイプ（酸化アルミニウム/ジルコニアアルミナ/セラミック/SiC）、基材タイプ、インチ/mm換算。国際産業基準に基づく客観データ。"
   image="/images/grit-reference.png"
   breadcrumbs={breadcrumbs}
   jsonLd={[faqJsonLd]}
@@ -105,12 +105,12 @@ const faqJsonLd = {
         <span class="eyebrow">砥粒グレード表</span>
         <h2>FEPA Pグレードと用途</h2>
         <p>
-          FEPA P（European Federation of Abrasives Producers）は、砥粒粗さの規格番号に
+          FEPA P（欧州研磨材製造者連盟 FEPA — Federation of European Producers of Abrasives）は、砥粒粗さの規格番号に
           採用されている国際標準です。数値が大きいほど砥粒は細くなります。
         </p>
         <div class="table-wrap">
           <table>
-            <caption>P40〜P5000の一般的なFEPA Pグレードリファレンス表</caption>
+            <caption>P40〜P4000がFEPA P標準グレード（P5000は標準系列を超えた拡張グレード）のリファレンス表</caption>
             <thead>
               <tr><th scope="col">グレード</th><th scope="col">粗さ</th><th scope="col">代表的用途</th></tr>
             </thead>
@@ -129,10 +129,10 @@ const faqJsonLd = {
         <h2>インチからmmへ</h2>
         <div class="table-wrap">
           <table>
-            <thead><tr><th scope="col">直径（インチ）</th><th scope="col">直径（mm）</th><th scope="col">計算</th></tr></thead>
+            <thead><tr><th scope="col">直径（インチ）</th><th scope="col">直径（mm）</th><th scope="col">備考</th></tr></thead>
             <tbody>
               {unitConversions.map((u) => (
-                <tr><th scope="row">{u.from}</th><td class="mono">{u.to}</td><td>{u.ratio}</td></tr>
+                <tr><th scope="row">{u.from}</th><td class="mono">{u.to}</td><td>{u.note}</td></tr>
               ))}
             </tbody>
           </table>

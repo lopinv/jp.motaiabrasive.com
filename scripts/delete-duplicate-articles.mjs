@@ -1,5 +1,5 @@
 // 国家版/变体直接删除（替代 noindex 方案）：
-//  1) 每个 (model|category|industry) cell 保留主国家版（qatar > saudi-arabia > uae），删除其余国家版
+//  1) 每个 (model|category|industry) cell 保留主地域版（kanto > kansai > tohoku ...），删除其余地域版
 //  2) 每个 (model|category|industry|country) cell 保留 variant 0，删除其余焦点变体（正文近似复制）
 //  3) 同步清理 _index.json
 // 幂等：对已删除集合重跑为 no-op。用法：node scripts/delete-duplicate-articles.mjs [--execute]
@@ -9,7 +9,7 @@ import path from 'node:path';
 
 const dir = path.resolve('src/content/articles');
 const execute = process.argv.includes('--execute');
-const countryRank = (c) => ({ qatar: 0, 'saudi-arabia': 1, uae: 2, 'general-gcc': 9 })[c] ?? 99;
+const countryRank = (c) => ({ kanto: 0, kansai: 1, tohoku: 2, chubu: 3, chugoku: 4, kyushu: 5, 'general-jp': 9 })[c] ?? 99;
 
 const files = fs.readdirSync(dir).filter((f) => f.endsWith('.mdx'));
 function fmField(text, key) {
@@ -30,14 +30,14 @@ for (const f of files) {
     model: fmField(t, 'productModel'),
     category: fmField(t, 'category'),
     industry: fmField(t, 'industry'),
-    country: fmField(t, 'gccCountry'),
+    country: fmField(t, 'jaRegion'),
   });
 }
 
 // 规则 1：3D cell 内按国家排名保留最小 rank 的国家版本
-// 例外：gcc-regional-sourcing 类型不参与国家去重——各国地域寻源篇正文由
+// 例外：jp-regional-sourcing 类型不参与国家去重——各国地域寻源篇正文由
 // 国家级真实数据（港口/监管机构/集群/商务文化）驱动，差异显著，全部保留
-const isRegional = (e) => e.category === 'gcc-regional-sourcing';
+const isRegional = (e) => e.category === 'jp-regional-sourcing';
 const cells3 = new Map();
 for (const e of entries) {
   if (isRegional(e)) continue; // 地域寻源篇跳过国家去重
@@ -54,7 +54,7 @@ for (const [c, group] of cells3) {
 }
 
 // 规则 2：4D cell 内按 variant 升序只留第一个
-// 例外：gcc-regional-sourcing 的两个变体（import-guide / market-logistics）正文由
+// 例外：jp-regional-sourcing 的两个变体（import-guide / market-logistics）正文由
 // 国家级数据驱动、章节主题不同，Jaccard 远低于近似复制阈值，两个都保留
 const cells4 = new Map();
 for (const e of entries) {

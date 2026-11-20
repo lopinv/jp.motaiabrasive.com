@@ -6,7 +6,7 @@ const sandingSpongesTopics = topicMatrix.filter(t => t.productFamily === 'sandin
 console.log(`Total sanding-sponges topics: ${sandingSpongesTopics.length}`);
 console.log('First 5 sanding-sponges topics:');
 sandingSpongesTopics.slice(0, 5).forEach((t, idx) => {
-  console.log(`  [${topicMatrix.indexOf(t)}] ${t.title} | ${t.industry} | ${t.gccCountry} | ${t.articleType}`);
+  console.log(`  [${topicMatrix.indexOf(t)}] ${t.title} | ${t.industry} | ${t.jaRegion} | ${t.articleType}`);
 });
 
 // Test generating all sanding-sponges

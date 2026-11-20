@@ -1,14 +1,14 @@
 export const SITE = {
   name: 'MoTai Abrasives',
-  nameAr: '墨泰研磨材',
+  nameJa: '墨泰研磨材',
   legalName: 'Hubei MoTai Abrasives Materials Co., Ltd.',
-  url: 'https://ar.motaiabrasive.com',
+  url: 'https://jp.motaiabrasive.com',
   locale: 'ja',
   email: 'motai-01@motaiabrasive.com',
   whatsapp: '8618118635597',
   phone: '+86 181 1863 5597',
   address: 'No. 88 Yuli Avenue, Junshui Town, Tongcheng County, Xianning, Hubei, China',
-  addressAr: '中国湖北省咸寧市通城県軍水鎮玉里大道88号',
+  addressJa: '中国湖北省咸寧市通城県軍水鎮玉里大道88号',
   social: {
     facebook: 'https://www.facebook.com/profile.php?id=61595012045510',
     instagram: 'https://www.instagram.com/motai_1_',
@@ -170,7 +170,7 @@ export const industries = [
     title: '家具および工業用木材向け研磨ソリューション',
     description:
       '木材仕上げ工程は削りと平滑化のバランスに依存します。適切なベルトとディスクを選ぶことで、より安定したプロセスと再現性のある品質を実現し、不適切な選定によるダウンタイムを削減します。',
-    image: '/images/belt-533.webp',
+    image: 'https://www.motaiabrasive.com/cdn/shop/files/motai-application-wood-real-1600.jpg?v=1794206426&width=1600',
     challenges: [
       '異なる部品間での仕上げグレードの統一',
       'ベルト選定不良による機械停止の削減',
@@ -194,7 +194,7 @@ export const industries = [
     title: '金属および産業メンテナンス向け研磨ソリューション',
     description:
       '金属表面には酸化物除去、バリ取り、塗装が必要です。ディスクとベルトは金属硬度、光沢要求、表面が保護層処理済みかどうかに基づいて選定します。',
-    image: '/images/workshop.jpg',
+    image: 'https://www.motaiabrasive.com/cdn/shop/files/motai-application-stainless-real-1600.jpg?v=1794206469&width=1600',
     challenges: [
       '母材を傷めずに錆除去',
       '塗装前のエッジ処理',
@@ -218,7 +218,7 @@ export const industries = [
     title: '車体準備およびメンテナンス向け研磨材',
     description:
       '塗装剥離、車体パネル準備、エッジ平滑化まで、各段階で異なる工具と研磨材が必要です。製品と加工方法の両面からアドバイスします。',
-    image: '/images/flap-disc.jpg',
+    image: 'https://www.motaiabrasive.com/cdn/shop/files/motai-application-auto-real-1600.jpg?v=1794206438&width=1600',
     challenges: [
       '塗装前の表面準備',
       '切断後のバリ取り',
@@ -242,7 +242,7 @@ export const industries = [
     title: '船舶表面準備および錆除去向け研磨材',
     description:
       '造船所での表面準備は、鋼板の錆除去と旧塗装剥離から始まり、溶継手処理、塗装前表面処理、表面摩擦低減へと続きます。ベルト/ディスク選定は表面積、錆タイプ、加工速度に依存。',
-    image: '/images/flap-disc.jpg',
+    image: 'https://www.motaiabrasive.com/cdn/shop/files/motai-application-marine-real-1600.jpg?v=1794206481&width=1600',
     challenges: [
       '母材を傷めずに鋼板の錆除去',
       '塗装前のエッジと溶継手処理',
@@ -252,7 +252,7 @@ export const industries = [
     faq: [
       {
         q: '造船所の錆除去に適した砥粒度は？',
-        a: '塗装・錆除去には粗目40–80、その後平滑化に100–180。砥粒タイプ（酸化物/ジルコニア）は錆タイプと加工方法を確認してから推奨します。',
+        a: '塗装・錆除去には粗目40–80、その後平滑化に100–180。砥粒タイプ（酸化物/ジルコニアアルミナ）は錆タイプと加工方法を確認してから推奨します。',
       },
       {
         q: '造船生産ライン向け大容量包装は可能ですか？',
@@ -266,7 +266,7 @@ export const industries = [
     title: 'パイプおよびタンク向け研磨材（石油・ガス）',
     description:
       '石油・ガス分野の表面準備には、パイプ錆除去、タンク内面処理、海洋掘削リグメンテナンス、防食塗装前準備が含まれます。砥粒度とディスクタイプは表面タイプと塗装要求により決定。',
-    image: '/images/factory.jpg',
+    image: 'https://www.motaiabrasive.com/cdn/shop/files/motai-application-metal-real-1600.jpg?v=1794206413&width=1600',
     challenges: [
       '表面を傷めずにパイプ錆除去',
       '塗装前のタンク内面準備',
@@ -276,7 +276,7 @@ export const industries = [
     faq: [
       {
         q: 'オイルタンク用砥粒度はどう決めますか？',
-        a: '粗目40–80で削り開始、その後仕上げ120–180へ段階的向上。砥粒タイプ（酸化物/ジルコニア）は表面硬度に依存。承認前に仕様確認します。',
+        a: '粗目40–80で削り開始、その後仕上げ120–180へ段階的向上。砥粒タイプ（酸化物/ジルコニアアルミナ）は表面硬度に依存。承認前に仕様確認します。',
       },
       {
         q: '数量注文前のサンプル照合はサポートされますか？',
@@ -290,7 +290,7 @@ export const industries = [
     title: '石膏ボードおよびコンクリート処理向け研磨材',
     description:
       '建設材料（石膏ボード、セメント、石材、木材）の加工には、曲面と平面に対応する柔軟な研磨工具が必要です。仕上げ段階と表面タイプに合わせて砥粒度と基材を選定。',
-    image: '/images/converting.jpg',
+    image: 'https://www.motaiabrasive.com/cdn/shop/files/motai-application-drywall-real-1600.jpg?v=1794206539&width=1600',
     challenges: [
       '塗装前の石膏ボード表面統一',
       'ボードエッジとヒンジの平滑化',
@@ -314,7 +314,7 @@ export const industries = [
     title: 'メンテナンスおよび一般産業向け研磨ソリューション',
     description:
       '一般産業施設でのメンテナンス、修理、表面洗浄作業。幅広い材料と用途をカバーし、正確な消費量に合わせたカスタマイズオプションを提供。',
-    image: '/images/workshop.jpg',
+    image: 'https://www.motaiabrasive.com/cdn/shop/files/motai-application-surface-real-1600.jpg?v=1794206493&width=1600',
     challenges: [
       '異なるライン間での仕上げ品質統一',
       '一般用途への適切な砥粒選定',
@@ -388,7 +388,7 @@ export const productCategoryLines = [
     name: '研磨ディスク',
     slug: 'sanding-discs',
     description:
-      'PSA粘着、フック&ループ、メッシュ、硬質ディスク、直径3〜6インチ、砥粒度60〜5000。卸売およびOEM歓迎。',
+      'PSA粘着、フック&ループ、メッシュ、固型ディスク、直径3〜6インチ、砥粒度60〜5000。卸売およびOEM歓迎。',
     image: 'https://www.motaiabrasive.com/cdn/shop/files/motai-new-disc-gold-8-20261029.jpg?width=640',
     href: '/products/sanding-discs',
   },

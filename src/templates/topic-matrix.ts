@@ -1,104 +1,108 @@
 /**
- * 选题矩阵生成器
- * 产品×规格×行业×GCC地区×13文章类型 的组合生成
- * 目标：生成 3000 篇去重、意图区分、关键词不蚕食的选题
+ * 選題マトリクス生成器
+ * 製品×仕様×業界×日本地域×13記事タイプ の組み合わせ生成
+ * 目標：重複排除・意図を区別・キーワードカニバライズしない 3000 本の選題
  */
 
 import { models } from '../data/models';
 import { productCategories, industries } from '../data/site';
 import { getAllTemplateTypes, getTemplate } from './article-templates';
 
-// ========== 基础维度定义 ==========
+// ========== 基本ディメンション定義 ==========
 
-// 纯 Hook&Loop 变体只归属 hook-loop 家族（从 sanding-discs 剔除），
-// 避免同一型号在两家族生成重复标题
+// 純粋な Hook&Loop 変体は hook-loop ファミリーにのみ帰属させ
+//（sanding-discs から除外）同一型番が 2 ファミリーで重複タイトルを出すのを防ぐ
 const HOOK_ONLY_MODEL_SLUGS = new Set(['hook-loop-disc', 'hook-loop-disc-multi-hole', 'hook-loop-disc-film']);
 
 export const productFamilies = [
-  { slug: 'abrasive-belts', name: 'أحزمة الصنفرة', models: models.filter(m => m.categorySlug === 'abrasive-belts') },
-  { slug: 'flap-discs', name: 'أقراص كوت (Flap Discs)', models: models.filter(m => m.categorySlug === 'flap-discs') },
-  { slug: 'sanding-discs', name: 'أقراص الصنفرة', models: models.filter(m => m.categorySlug === 'sanding-discs' && !HOOK_ONLY_MODEL_SLUGS.has(m.slug)) },
-  { slug: 'hook-loop', name: 'أقراص هوك آند لوب', models: models.filter(m => m.categorySlug === 'sanding-discs' && m.attachment.includes('Hook')) },
-  { slug: 'sanding-sponges', name: 'إسفنجيات صنفرة', models: models.filter(m => m.categorySlug === 'sanding-sponges') },
+  { slug: 'abrasive-belts', name: '研磨ベルト', models: models.filter(m => m.categorySlug === 'abrasive-belts') },
+  { slug: 'flap-discs', name: 'フラップディスク', models: models.filter(m => m.categorySlug === 'flap-discs') },
+  { slug: 'sanding-discs', name: '研磨ディスク', models: models.filter(m => m.categorySlug === 'sanding-discs' && !HOOK_ONLY_MODEL_SLUGS.has(m.slug)) },
+  { slug: 'hook-loop', name: 'フック&ループディスク', models: models.filter(m => m.categorySlug === 'sanding-discs' && m.attachment.includes('Hook')) },
+  { slug: 'sanding-sponges', name: '研磨スポンジ', models: models.filter(m => m.categorySlug === 'sanding-sponges') },
 ] as const;
 
-export const gccCountries = [
-  { code: 'saudi-arabia', name: 'السعودية', nameEn: 'Saudi Arabia', industrialClusters: ['الرياض', 'جدة', 'الدمام', 'الجبيل', 'ينبع'] },
-  { code: 'uae', name: 'الإمارات', nameEn: 'UAE', industrialClusters: ['دبي', 'أبوظبي', 'الشارقة', 'جبل علي', 'العين'] },
-  { code: 'qatar', name: 'قطر', nameEn: 'Qatar', industrialClusters: ['الدوحة', 'الوكرة', 'مسيعيد', 'رأس لفان'] },
-  { code: 'kuwait', name: 'الكويت', nameEn: 'Kuwait', industrialClusters: ['الكويت', 'الأحمدي', 'الشويخ', 'صباح الأحمد'] },
-  { code: 'bahrain', name: 'البحرين', nameEn: 'Bahrain', industrialClusters: ['المنامة', 'سترة', 'الحورة', 'عسكر'] },
-  { code: 'oman', name: 'عُمان', nameEn: 'Oman', industrialClusters: ['مسقط', 'صحار', 'صلالة', 'الدقم', 'نزوى'] },
-  { code: 'general-gcc', name: 'الخليج العربي', nameEn: 'GCC General', industrialClusters: [] },
+/**
+ * 日本地域 — 記事の地域ディメンション（旧 GCC 諸国 → 日本地域）。
+ * 主市場は関東（東京/横浜の製造業クラスタ + 横浜・川崎・千葉の主要輸入港）。
+ */
+export const jaRegions = [
+  { code: 'kanto', name: '関東', nameEn: 'Kanto', clusters: ['東京', '横浜', '川崎', '千葉'] },
+  { code: 'kansai', name: '関西', nameEn: 'Kansai', clusters: ['大阪', '神戸', '京都'] },
+  { code: 'tohoku', name: '東北', nameEn: 'Tohoku', clusters: ['仙台'] },
+  { code: 'chubu', name: '中部', nameEn: 'Chubu', clusters: ['名古屋', '愛知', '新潟'] },
+  { code: 'chugoku', name: '中国地方', nameEn: 'Chugoku', clusters: ['広島', '山口'] },
+  { code: 'kyushu', name: '九州', nameEn: 'Kyushu', clusters: ['福岡', '北九州'] },
+  { code: 'general-jp', name: '全国', nameEn: 'All Japan', clusters: [] },
 ] as const;
 
-// titleName: عنوان مختصر مخصص لبناء عناوين SEO (≤ 70 خانة) — يوضع في generateTitleVariants
+// titleName: SEO タイトル作成用の短縮名（≤ 70 文字制約）— generateTitleVariants に使用
 export const industrySegments = [
-  { code: 'woodworking', name: 'نجارة الخشب', titleName: 'النجارة', nameEn: 'Woodworking', keyProcesses: ['تجهيز الألواح', 'تشطيب الحواف', 'أثاث', 'أرضيات'] },
-  { code: 'metalworking', name: 'تشطيب المعادن', titleName: 'المعادن', nameEn: 'Metalworking', keyProcesses: ['إزالة الشavings والحواف', 'إزالة الصدأ', 'طحن اللحام', 'تهيئة الأسطح', 'الصفائح المعدنية'] },
-  { code: 'automotive', name: 'السيارات والصيانة', titleName: 'السيارات', nameEn: 'Automotive', keyProcesses: ['صنفرة هيكل السيارة', 'صنفرة البرايمر', 'الإصلاح', 'التلميع الدقيق'] },
-  { code: 'shipbuilding', name: 'التصنيع البحري وصيانة السفن', titleName: 'حوض السفن', nameEn: 'Shipbuilding', keyProcesses: ['إزالة صدأ الصفائح الفولاذية', 'معالجة اللحام', 'معالجة ما قبل الطلاء', 'مضاد انزلاق السطح'] },
-  { code: 'oil-gas', name: 'النفط والغاز - تهيئة الأسطح', titleName: 'النفط والغاز', nameEn: 'Oil & Gas', keyProcesses: ['إزالة صدأ الأنابيب', 'الأسطح الداخلية للخزانات', 'صيانة المنصات البحرية', 'معالجة ما قبل الطلاء المضاد للتآكل'] },
-  { code: 'construction', name: 'مواد البناء المعالجة', titleName: 'البناء', nameEn: 'Construction Materials', keyProcesses: ['ألواح الخشب', 'صنفرة اللوح الجصي', 'تلميع الحجر', 'صنفرة الخرسانة'] },
-  { code: 'general', name: 'الصناعة العامة', titleName: 'الصناعة', nameEn: 'General Industrial', keyProcesses: ['الصيانة والإصلاح', 'الصنفرة العامة', 'تنظيف الأسطح'] },
+  { code: 'woodworking', name: '木工', titleName: '木工', nameEn: 'Woodworking', keyProcesses: ['木材表面準備', 'エッジ仕上げ', '家具製造', '床材'] },
+  { code: 'metalworking', name: '金属仕上げ', titleName: '金属', nameEn: 'Metalworking', keyProcesses: ['バリ取り', '錆除去', '溶接ビード処理', '表面準備', '板金'] },
+  { code: 'automotive', name: '自動車・メンテナンス', titleName: '自動車', nameEn: 'Automotive', keyProcesses: ['車体サンディング', 'プライマー研磨', '板金修理', '最終ポリッシュ'] },
+  { code: 'shipbuilding', name: '造船・船舶メンテナンス', titleName: '造船', nameEn: 'Shipbuilding', keyProcesses: ['鋼板錆除去', '溶接処理', '塗装前準備', '表面防滑'] },
+  { code: 'oil-gas', name: '石油・ガス - 表面準備', titleName: '石油・ガス', nameEn: 'Oil & Gas', keyProcesses: ['パイプ錆除去', 'タンク内面処理', '海洋リグメンテナンス', '防食塗装前準備'] },
+  { code: 'construction', name: '建設材料加工', titleName: '建設', nameEn: 'Construction Materials', keyProcesses: ['木材板材', '石膏ボードサンディング', '石材ポリッシュ', 'コンクリート研磨'] },
+  { code: 'general', name: '一般産業', titleName: '一般産業', nameEn: 'General Industrial', keyProcesses: ['メンテナンス・修理', '一般サンディング', '表面清掃'] },
 ] as const;
 
 export const articleTypes = getAllTemplateTypes();
 
-// ========== 关键词库（用于长尾组合） ==========
+// ========== キーワードライブラリ（ロングテール組み合わせ用） ==========
 
 export const keywordLibrary = {
-  // 核心产品词（主关键词候选）
+  // コア製品語（メインキーワード候補）
   primaryKeywords: {
-    'abrasive-belts': ['أحزمة الصنفرة', 'أحزمة قاشة', 'حزام صنفرة'],
-    'flap-discs': ['أقراص كوت', 'أقراص شرائح', 'فلاب ديسك'],
-    'sanding-discs': ['أقراص الصنفرة', 'أقراص سنفرة', 'قرص صنفرة'],
-    'hook-loop': ['أقراص هوك آند لوب', 'أقراص فيلكرو', 'أقراص خطاف وحلقة'],
-    'sanding-sponges': ['إسفنجيات صنفرة', 'إسفنج صنفرة', 'وسائد صنفرة'],
+    'abrasive-belts': ['研磨ベルト', 'サンディングベルト', '耐水研磨ベルト'],
+    'flap-discs': ['フラップディスク', 'フラップ研磨ディスク', '研削フラップディスク'],
+    'sanding-discs': ['研磨ディスク', 'サンディングディスク', 'メッシュディスク'],
+    'hook-loop': ['フック&ループディスク', 'ベルクロディスク', '着脱式研磨ディスク'],
+    'sanding-sponges': ['研磨スポンジ', 'サンディングスポンジ', 'スポンジ研磨材'],
   },
 
-  // 规格词（次关键词）
+  // 仕様語（サブキーワード）
   specKeywords: {
-    grit: ['غرِت 40', 'غرِت 60', 'غرِت 80', 'غرِت 100', 'غرِت 120', 'غرِت 150', 'غرِت 180', 'غرِت 240', 'غرِت 320', 'غرِت 400', 'غرِت 600', 'غرِت 800', 'غرِت 1000', 'غرِت 3000', 'غرِت 5000'],
-    size: ['533×75 مم', '610×100 مم', '1520×630 مم', '2200×1330 مم', '3 إنش', '4 إنش', '5 إنش', '6 إنش', '125 مم', '150 مم'],
-    backing: ['قاعدة قماش', 'قاعدة ورق', 'قاعدة بوليمرية', 'قاعدة بلاستيكية', 'قاعدة ألياف زجاجية'],
-    attachment: ['هوك آند لوب', 'لصق ذاتي (PSA)', 'شبكة معدنية'],
-    grain: ['أكسيد الألومنيوم', 'كربيد السيليكون (SiC)', 'زركونيا ألومينا', 'حبيبات سيراميك'],
+    grit: ['砥粒 40', '砥粒 60', '砥粒 80', '砥粒 100', '砥粒 120', '砥粒 150', '砥粒 180', '砥粒 240', '砥粒 320', '砥粒 400', '砥粒 600', '砥粒 800', '砥粒 1000', '砥粒 3000', '砥粒 5000'],
+    size: ['533×75 mm', '610×100 mm', '1520×630 mm', '2200×1330 mm', '3インチ', '4インチ', '5インチ', '6インチ', '125 mm', '150 mm'],
+    backing: ['布基材', '紙基材', '合成繊維基材', 'プラスチック基材', 'ガラス繊維基材'],
+    attachment: ['フック&ループ', 'PSA（圧感型粘着）', 'メッシュ'],
+    grain: ['酸化アルミニウム', '炭化シリコン（SiC）', 'ジルコニアアルミナ', 'セラミック砥粒'],
   },
 
-  // 应用词
+  // 応用語
   applicationKeywords: {
-    'woodworking': ['نجارة', 'أثاث', 'ألواح خشب', 'حواف خشب', 'أرضيات باركيه'],
-    'metalworking': ['معدن', 'ستانلس ستيل', 'فولاذ', 'ألومنيوم', 'إزالة الشوائب الحادة', 'أصنعة لحام', 'إزالة الصدأ'],
-    'automotive': ['سيارات', 'هياكل سيارات', 'عطل صيانة', 'دهان سيارات', 'تلميع'],
-    'shipbuilding': ['سفن', 'حوض سفن', 'صيانة بحرية', 'ألواح فولاذ', 'منع الصدأ'],
-    'oil-gas': ['نفط', 'غاز', 'أنابيب', 'خزانات', 'منصات بحرية', 'منع التآكل'],
-    'construction': ['بناء', 'لوح جصي', 'أسمنت', 'حجر', 'بلاط'],
+    'woodworking': ['木工', '家具', '合板', '木材エッジ', 'フローリング'],
+    'metalworking': ['金属', 'ステンレス', '鉄', 'アルミ', 'バリ取り', '溶接ビード', '錆除去'],
+    'automotive': ['自動車', '車体パネル', 'メンテナンス', '塗装', 'ポリッシュ'],
+    'shipbuilding': ['船舶', 'ドック', '船体メンテナンス', '鋼板', '防錆'],
+    'oil-gas': ['石油', 'ガス', 'パイプ', 'タンク', '海洋プラットフォーム', '防食'],
+    'construction': ['建設', '石膏ボード', 'セメント', '石材', 'タイル'],
   },
 
-  // 采购词
+  // 調達語
   procurementKeywords: [
-    'مورد جملة', 'موزعون صناعيون', 'من المصنع مباشرة', 'عرض سعر', 'طلب عروض',
-    'حد أدنى لكمية الطلب', 'مدة التوريد', 'طلب عينات', 'توريد تحت العلامة التجارية (OEM)',
-    'شهادة المطابقة', 'شهادة التحليل', 'تغليف مخصص', 'شحن بحري', 'شحن جوي',
+    '卸売サプライヤー', '産業用品販売店', '工場直販', '見積依頼', '価格見積',
+    '最小注文数量（MOQ）', '納期', 'サンプル依頼', 'OEM（顧客ブランド製造）',
+    '適合証明書（COC）', '分析証明書（COA）', 'カスタム包装', '海上運送', '空輸',
   ],
 
-  // 地域词
-  regionalKeywords: gccCountries.map(c => `مورد ${c.name}`).concat(
-    gccCountries.map(c => `موزع ${c.name}`)
+  // 地域語
+  regionalKeywords: jaRegions.map(r => `${r.name} 供給元`).concat(
+    jaRegions.map(r => `${r.name} 販売代理`)
   ).concat(
-    gccCountries.map(c => `سوق ${c.name}`)
+    jaRegions.map(r => `${r.name} 市場`)
   ),
 
-  // 技术/标准词
+  // 技術/規格語
   technicalKeywords: [
-    'مواصفات FEPA', 'المعايير الدولية ISO', 'ANSI', 'JIS',
-    'معدات الوقاية الشخصية', 'سحب الغبار', 'تهيئة الأسطح',
-    'SASO', 'ESMA', 'GSO', 'درجة الغرِت', 'رابطة إسفنجية',
+    'FEPA規格', 'ISO 6344', 'JIS', 'JANSI', 'ANSI',
+    '個人用保護具', '集じん', '表面準備',
+    '砥粒グレード', 'スポンジ接着剤', 'CE', 'PSE',
   ],
 };
 
-// ========== 选题生成逻辑 ==========
+// ========== 選題生成ロジック ==========
 
 export interface TopicSpec {
   id: string;
@@ -108,116 +112,117 @@ export interface TopicSpec {
   productFamily: string;
   productModel?: string;
   industry: string;
-  gccCountry: string;
+  jaRegion: string;
   primaryKeyword: string;
   secondaryKeywords: string[];
   longTailKeywords: string[];
   searchIntent: 'informational' | 'technical' | 'commercial' | 'supplier-evaluation' | 'transactional';
   buyerJourneyStage: 'understanding' | 'evaluation' | 'comparison' | 'sourcing';
   estimatedWordCount: number;
-  priority: number; // 1=高优先级(高商业价值长尾), 2=中, 3=低
-  dedupeKey: string; // 用于去重
+  priority: number; // 1=優先度高（商業価値の高いロングテール）, 2=中, 3=低
+  dedupeKey: string; // 重複排除用
 }
 
 /**
- * 生成特定组合的选题
+ * 特定の組み合わせの選題を生成
  */
 function generateTopicsForCombination(
   productFamily: typeof productFamilies[0],
   model: typeof models[0] | null,
   industry: typeof industrySegments[0],
-  gccCountry: typeof gccCountries[0],
+  jaRegion: typeof jaRegions[0],
   articleType: string
 ): TopicSpec[] {
   const template = getTemplate(articleType);
   if (!template) return [];
 
   const topics: TopicSpec[] = [];
-  const baseId = `${productFamily.slug}-${model?.slug || 'general'}-${industry.code}-${gccCountry.code}-${articleType}`;
+  const baseId = `${productFamily.slug}-${model?.slug || 'general'}-${industry.code}-${jaRegion.code}-${articleType}`;
 
-  // 根据文章类型生成变体标题；只保留首个变体（focus 0）。
-  // 后续焦点变体（如 grit-size-selection）与主变体同 cell 正文 Jaccard 0.95+，
-  // 属同模板换角度复制，直接不生成。
-  // 例外：gcc-regional-sourcing 的两个变体（import-guide / market-logistics）
-  // 正文由国家级数据驱动、差异显著，予以保留。
-  const all = generateTitleVariants(productFamily, model, industry, gccCountry, articleType);
-  const variants = articleType === 'gcc-regional-sourcing' ? all : all.slice(0, 1);
+  // 記事タイプに応じたバリアントタイトルを生成；最初にバリアント（focus 0）のみ採用。
+  // 以降のフォーカスバリアント（例 grit-size-selection）はメインバリアントと同一 cell 本文の
+  // Jaccard 0.95 以上で、同一テンプレートの角度替えコピーであり生成しない。
+  // 例外：jp-regional-sourcing の 2 バリアント（import-guide / market-logistics）は
+  // 本文が地域別データで駆動され差異が顕著のため、残す。
+  const all = generateTitleVariants(productFamily, model, industry, jaRegion, articleType);
+  const variants = articleType === 'jp-regional-sourcing' ? all : all.slice(0, 1);
 
-variants.forEach((variant, idx) => {
-	    const keywords = selectKeywords(productFamily.slug, industry.code, gccCountry.code, articleType, model);
-	    const modelSlug = model?.slug || 'general';
-	    const dedupeKey = `${productFamily.slug}|${modelSlug}|${industry.code}|${gccCountry.code}|${articleType}|${variant.focus}`;
+  variants.forEach((variant, idx) => {
+    const keywords = selectKeywords(productFamily.slug, industry.code, jaRegion.code, articleType, model);
+    const modelSlug = model?.slug || 'general';
+    const dedupeKey = `${productFamily.slug}|${modelSlug}|${industry.code}|${jaRegion.code}|${articleType}|${variant.focus}`;
 
-	    topics.push({
-	      id: `${baseId}-${idx}`,
-	      slug: generateSlug(productFamily.slug, modelSlug, industry.code, gccCountry.code, articleType, variant.focus, idx),
-	      title: variant.title,
-	      articleType,
-	      productFamily: productFamily.slug,
-	      productModel: model?.slug,
-	      industry: industry.code,
-	      gccCountry: gccCountry.code,
-	      primaryKeyword: keywords.primary,
-	      secondaryKeywords: keywords.secondary,
-	      longTailKeywords: keywords.longTail,
-	      searchIntent: mapIntent(articleType),
-	      buyerJourneyStage: template.buyerJourneyStage,
-	      estimatedWordCount: Math.floor((template.minWordCount + template.maxWordCount) / 2),
-	      priority: calculatePriority(articleType, gccCountry.code, industry.code),
-	      dedupeKey,
-	    });
-	  });
+    topics.push({
+      id: `${baseId}-${idx}`,
+      slug: generateSlug(productFamily.slug, modelSlug, industry.code, jaRegion.code, articleType, variant.focus, idx),
+      title: variant.title,
+      articleType,
+      productFamily: productFamily.slug,
+      productModel: model?.slug,
+      industry: industry.code,
+      jaRegion: jaRegion.code,
+      primaryKeyword: keywords.primary,
+      secondaryKeywords: keywords.secondary,
+      longTailKeywords: keywords.longTail,
+      searchIntent: mapIntent(articleType),
+      buyerJourneyStage: template.buyerJourneyStage,
+      estimatedWordCount: Math.floor((template.minWordCount + template.maxWordCount) / 2),
+      priority: calculatePriority(articleType, jaRegion.code, industry.code),
+      dedupeKey,
+    });
+  });
 
   return topics;
 }
 
 /**
- * 生成标题变体
+ * タイトルバリアントを生成
  */
 function generateTitleVariants(
   productFamily: typeof productFamilies[0],
   model: typeof models[0] | null,
   industry: typeof industrySegments[0],
-  gccCountry: typeof gccCountries[0],
+  jaRegion: typeof jaRegions[0],
   articleType: string
 ): Array<{ title: string; focus: string }> {
   const variants: Array<{ title: string; focus: string }> = [];
-  // 标题用 shortName（型号短名）控制长度；无型号时回落家族名
+  // タイトルは shortName（型番短名）で長さを制御；型番なし時はファミリー名にフォールバック
   const modelName = model ? (model.shortName || model.name) : productFamily.name;
-  const countryName = gccCountry.code === 'general-gcc' ? 'الخليج العربي' : gccCountry.name;
+  const regionName = jaRegion.code === 'general-jp' ? '全国' : jaRegion.name;
   const industryName = industry.name;
 
-  // العنوان يستخدم اسم القطاع المختصر (titleName) ليبقى ضمن 70 خانة
+  // タイトルはセクター短縮名（titleName）で 70 文字以内に収める
   const iName = (industry as any).titleName || industryName;
+  const altProduct = getAlternativeProduct(productFamily.slug);
 
   switch (articleType) {
     case 'product-comparison':
-      // 对比同家族不同规格，或跨家族（型号名保留为唯一性锚点）
+      // 同ファミリーの異なる仕様、または異ファミリーの比較（型番名を一意性のアンカーとして保持）
       variants.push({
-        title: `${modelName} أم ${getAlternativeProduct(productFamily.slug)} لـ ${iName} في ${countryName}؟`,
+        title: `${modelName} vs ${altProduct}｜${iName}・${regionName}でどう選ぶ？`,
         focus: 'vs-alternative',
       });
       variants.push({
-        title: `كيف تختار ${modelName} لـ ${iName} في ${countryName}؟`,
+        title: `【選定ガイド】${iName}向け${modelName}の選び方（${regionName}）`,
         focus: 'selection-guide',
       });
       break;
 
     case 'multi-product-comparison':
       variants.push({
-        title: `مقارنة ${modelName} لـ ${iName} في ${countryName}`,
+        title: `${iName}向け${modelName}複数仕様比較（${regionName}）`,
         focus: 'full-matrix',
       });
       break;
 
     case 'buying-guide':
       variants.push({
-        title: `دليل شراء ${modelName} لـ ${iName} في ${countryName}`,
+        title: `${iName}向け${modelName} 購入ガイド（${regionName}）`,
         focus: 'complete-guide',
       });
       if (model) {
         variants.push({
-          title: `الغرِت والمقاس لـ ${modelName} ${iName} ${countryName}`,
+          title: `${modelName} の砥粒・サイズ選び｜${iName} ${regionName}`,
           focus: 'grit-size-selection',
         });
       }
@@ -225,28 +230,28 @@ function generateTitleVariants(
 
     case 'technical-guide':
       variants.push({
-        title: `معايير وأنواع ${modelName} للأداء في ${iName} ${countryName}`,
+        title: `${modelName}の規格と構造｜${iName}での性能（${regionName}）`,
         focus: 'technical-deep-dive',
       });
       break;
 
     case 'application-guide':
       variants.push({
-        title: `${modelName} لتطبيق ${iName} ${countryName}`,
+        title: `${iName}における${modelName}の適用ガイド（${regionName}）`,
         focus: 'industry-application',
       });
       break;
 
     case 'process-tutorial':
       variants.push({
-        title: `${getProcessName(industry.code)} بـ ${modelName} لـ ${iName} ${countryName}`,
+        title: `${iName}向け ${getProcessName(industry.code)} 工程解説（${modelName}使用・${regionName}）`,
         focus: 'step-by-step',
       });
       break;
 
     case 'troubleshooting':
       variants.push({
-        title: `مشاكل ${modelName} في ${iName} ${countryName}`,
+        title: `${iName}での${modelName}不具合と対策（${regionName}）`,
         focus: 'failure-modes',
       });
       break;
@@ -254,7 +259,7 @@ function generateTitleVariants(
     case 'product-spec-detail':
       if (model) {
         variants.push({
-          title: `مواصفات ${modelName} لـ ${iName} في ${countryName}`,
+          title: `${modelName} 仕様詳細｜${iName}・${regionName}`,
           focus: 'full-specs',
         });
       }
@@ -262,33 +267,33 @@ function generateTitleVariants(
 
     case 'procurement-guide':
       variants.push({
-        title: `تقييم موردين ${modelName} لـ ${iName} في ${countryName}`,
+        title: `${iName}向け${modelName} サプライヤー評価ガイド（${regionName}）`,
         focus: 'procurement-process',
       });
       break;
 
     case 'wholesale-oem-guide':
       variants.push({
-        title: `دليل OEM والجملة لـ ${modelName} ${iName} ${countryName}`,
+        title: `${modelName}の卸・OEMガイド｜${iName}（${regionName}）`,
         focus: 'wholesale-oem',
       });
       break;
 
     case 'industry-market':
       variants.push({
-        title: `اتجاهات ${iName} ${countryName} وتأثيرها على ${modelName}`,
+        title: `${iName}市場の動向と${modelName}への影響（${regionName}）`,
         focus: 'market-trends',
       });
       break;
 
-    case 'gcc-regional-sourcing':
-      if (gccCountry.code !== 'general-gcc') {
+    case 'jp-regional-sourcing':
+      if (jaRegion.code !== 'general-jp') {
         variants.push({
-          title: `استيراد ${modelName} إلى ${countryName} لقطاع ${iName}`,
+          title: `【${regionName}】${modelName}の輸入・物流ガイド（${iName}向け）`,
           focus: 'import-guide',
         });
         variants.push({
-          title: `سوق ${modelName} في ${countryName} لقطاع ${iName}`,
+          title: `${regionName}における${modelName}の市場と調達`,
           focus: 'market-logistics',
         });
       }
@@ -296,7 +301,7 @@ function generateTitleVariants(
 
     case 'faq-buyers-guide':
       variants.push({
-        title: `أسئلة مشتري ${modelName} ${iName} ${countryName}`,
+        title: `${iName}向け${modelName} 購入者FAQ（${regionName}）`,
         focus: 'buyer-faq',
       });
       break;
@@ -306,12 +311,12 @@ function generateTitleVariants(
 }
 
 /**
- * 选择关键词组合
+ * キーワード組み合わせを選択
  */
 function selectKeywords(
   productFamilySlug: string,
   industryCode: string,
-  gccCountryCode: string,
+  jaRegionCode: string,
   articleType: string,
   model: typeof models[0] | null
 ) {
@@ -319,26 +324,26 @@ function selectKeywords(
   const primaryCandidates = lib.primaryKeywords[productFamilySlug as keyof typeof lib.primaryKeywords] || [productFamilySlug];
   const primary = primaryCandidates[0];
 
-  // 次关键词：规格 + 应用 + 采购
+  // サブキーワード：仕様 + 応用 + 調達
   const secondary: string[] = [];
   if (model) {
-    secondary.push(...model.gritRange.slice(0, 3).map(g => `غرِت ${g}`));
-    secondary.push(model.sizeAr);
+    secondary.push(...model.gritRange.slice(0, 3).map(g => `砥粒 ${g}`));
+    secondary.push(model.sizeJa);
   }
   secondary.push(...(lib.applicationKeywords[industryCode as keyof typeof lib.applicationKeywords] || []).slice(0, 2));
   secondary.push(...lib.procurementKeywords.slice(0, 2));
   secondary.push(...lib.technicalKeywords.slice(0, 1));
 
-  // 长尾：地域 + 产品 + 采购/应用
+  // ロングテール：地域 + 製品 + 調達/応用
   const longTail: string[] = [];
-  const countryName = gccCountries.find(c => c.code === gccCountryCode)?.name || '';
-  if (countryName && gccCountryCode !== 'general-gcc') {
-    longTail.push(`${primary} ${countryName}`);
-    longTail.push(`مورد ${primary} ${countryName}`);
-    longTail.push(`${primary} لـ ${industrySegments.find(i => i.code === industryCode)?.name} ${countryName}`);
+  const regionName = jaRegions.find(c => c.code === jaRegionCode)?.name || '';
+  if (regionName && jaRegionCode !== 'general-jp') {
+    longTail.push(`${primary} ${regionName}`);
+    longTail.push(`${primary} 供給元 ${regionName}`);
+    longTail.push(`${primary} ${industrySegments.find(i => i.code === industryCode)?.name}向け ${regionName}`);
   }
-  longTail.push(`${primary} ${lib.procurementKeywords[0]}`);
-  longTail.push(`كيف تختار ${primary}`);
+  longTail.push(`${primary} 見積依頼`);
+  longTail.push(`${primary} の選び方`);
 
   return {
     primary,
@@ -348,23 +353,23 @@ function selectKeywords(
 }
 
 /**
- * 生成 URL slug
+ * URL slug を生成
  */
 function generateSlug(
   productFamily: string,
   modelSlug: string,
   industry: string,
-  gccCountry: string,
+  jaRegion: string,
   articleType: string,
   focus: string,
   variantIdx: number
 ): string {
-  const parts = [productFamily, modelSlug, industry, gccCountry, articleType, focus, String(variantIdx)];
+  const parts = [productFamily, modelSlug, industry, jaRegion, articleType, focus, String(variantIdx)];
   return parts.filter(Boolean).join('-').replace(/[^a-z0-9-]/gi, '-').toLowerCase();
 }
 
 /**
- * 映射文章类型到搜索意图
+ * 記事タイプを検索意図へマッピング
  */
 function mapIntent(articleType: string): TopicSpec['searchIntent'] {
   const intentMap: Record<string, TopicSpec['searchIntent']> = {
@@ -379,24 +384,24 @@ function mapIntent(articleType: string): TopicSpec['searchIntent'] {
     'procurement-guide': 'supplier-evaluation',
     'wholesale-oem-guide': 'transactional',
     'industry-market': 'informational',
-    'gcc-regional-sourcing': 'supplier-evaluation',
+    'jp-regional-sourcing': 'supplier-evaluation',
     'faq-buyers-guide': 'commercial',
   };
   return intentMap[articleType] || 'informational';
 }
 
 /**
- * 计算优先级（1=高，商业价值高的长尾优先）
+ * 優先度計算（1=高、商業価値の高いロングテール優先）
  */
-function calculatePriority(articleType: string, gccCountry: string, industry: string): number {
-  // 高商业意图类型 + 核心 GCC 国家 + 核心行业 = 优先级 1
-  const highIntentTypes = ['buying-guide', 'product-spec-detail', 'procurement-guide', 'wholesale-oem-guide', 'gcc-regional-sourcing', 'product-comparison'];
-  const coreCountries = ['saudi-arabia', 'uae', 'qatar'];
+function calculatePriority(articleType: string, jaRegion: string, industry: string): number {
+  // 高商業意図タイプ + 核心地域 + 核心業界 = 優先度 1
+  const highIntentTypes = ['buying-guide', 'product-spec-detail', 'procurement-guide', 'wholesale-oem-guide', 'jp-regional-sourcing', 'product-comparison'];
+  const coreRegions = ['kanto', 'kansai', 'tohoku'];
   const coreIndustries = ['metalworking', 'woodworking', 'automotive', 'shipbuilding', 'oil-gas'];
 
   let score = 0;
   if (highIntentTypes.includes(articleType)) score += 2;
-  if (coreCountries.includes(gccCountry)) score += 2;
+  if (coreRegions.includes(jaRegion)) score += 2;
   if (coreIndustries.includes(industry)) score += 1;
 
   if (score >= 4) return 1;
@@ -405,98 +410,95 @@ function calculatePriority(articleType: string, gccCountry: string, industry: st
 }
 
 /**
- * 辅助函数
+ * 補助関数
  */
 function getAlternativeProduct(productFamilySlug: string): string {
   const alternatives: Record<string, string> = {
-    'abrasive-belts': 'أقراص الصنفرة',
-    'flap-discs': 'أحزمة الصنفرة',
-    'sanding-discs': 'أحزمة الصنفرة',
-    'hook-loop': 'أقراص لاصق PSA',
-    'sanding-sponges': 'أقراص الصنفرة',
+    'abrasive-belts': '研磨ディスク',
+    'flap-discs': '研磨ベルト',
+    'sanding-discs': '研磨ベルト',
+    'hook-loop': 'PSA粘着ディスク',
+    'sanding-sponges': '研磨ディスク',
   };
-  return alternatives[productFamilySlug] || 'المنتج البديل';
+  return alternatives[productFamilySlug] || '代替製品';
 }
 
 function getTechnicalTopic(productFamilySlug: string): string {
   const topics: Record<string, string> = {
-    'abrasive-belts': 'أحزمة الصنفرة (الحبيبات، القاعدة، الرابطة)',
-    'flap-discs': 'أقراص الشرائح (الشرائح، القاعدة، الزاوية)',
-    'sanding-discs': 'أقراص الصنفرة (الشبكي، الصلب، اللاصق)',
-    'hook-loop': 'نظام هوك آند لوب (الخطاف، الحلقة، التوافق)',
-    'sanding-sponges': 'إسفنج الصنفرة (الكثافة، الحبيبات، المرونة)',
+    'abrasive-belts': '研磨ベルト（砥粒、基材、接着剤）',
+    'flap-discs': 'フラップディスク（フラップ枚数、基材、角度）',
+    'sanding-discs': '研磨ディスク（メッシュ、樹脂、粘着）',
+    'hook-loop': 'フック&ループシステム（フック、ループ、互換性）',
+    'sanding-sponges': '研磨スポンジ（密度、砥粒、柔軟性）',
   };
-  return topics[productFamilySlug] || 'التقنية';
+  return topics[productFamilySlug] || '技術';
 }
 
 /**
- * 技术主题词带型号名：有型号时用「产品名 (技术维度)」，
- * 无型号时回落纯技术主题。保证 technical-guide 标题含具体型号，避免同族撞题。
+ * 型番名付き技術トピック：型番があれば「製品名（技術ディメンション）」を使用し、
+ * なければ純技術トピックにフォールバック。technical-guide タイトルに具体型番を含め、
+ * 同ファミリーでの重複タイトルを防ぐ。
  */
 function getTechnicalTopicForModel(
   productFamilySlug: string,
   model: typeof models[0] | null
 ): string {
-  if (model) return `${model.name} (الحبيبات، القاعدة، الرابطة)`;
+  if (model) return `${model.name}（砥粒、基材、接着剤）`;
   return getTechnicalTopic(productFamilySlug);
 }
 
 function getProcessName(industryCode: string): string {
   const processes: Record<string, string> = {
-    'woodworking': 'تشطيب الخشب',
-    'metalworking': 'تشطيب المعادن',
-    'automotive': 'تجهيز هياكل السيارات',
-    'shipbuilding': 'صيانة أسطح السفن',
-    'oil-gas': 'تهيئة أسطح النفط',
-    'construction': 'تشطيب مواد البناء',
-    'general': 'الصنفرة الصناعية',
+    'woodworking': '木材仕上げ工程',
+    'metalworking': '金属仕上げ工程',
+    'automotive': '車体パネル準備工程',
+    'shipbuilding': '船体表面処理工程',
+    'oil-gas': 'パイプ・タンク表面準備工程',
+    'construction': '建設材料加工工程',
+    'general': '産業用サンディング工程',
   };
-  return processes[industryCode] || 'العملية';
+  return processes[industryCode] || '工程';
 }
 
-// ========== 主生成函数 ==========
+// ========== メイン生成関数 ==========
 
 /**
- * 生成完整选题矩阵（目标 ~3000 篇）
+ * 完全な選題マトリクスを生成（目標 ~3000 本）
  */
 export function generateTopicMatrix(): TopicSpec[] {
   const allTopics: TopicSpec[] = [];
 
-  // 遍历所有组合
+  // すべての組み合わせを反復
   for (const productFamily of productFamilies) {
     const modelsToUse = productFamily.models.length > 0 ? productFamily.models : [null];
 
     for (const model of modelsToUse) {
       for (const industry of industrySegments) {
-        // 过滤：只生成相关的产品-行业组合
+        // フィルタ：関連する製品-業界組み合わせのみ生成
         if (!isRelevantCombination(productFamily.slug, industry.code, model)) continue;
 
-        for (const gccCountry of gccCountries) {
-          // 反规模化策略：内容选题按「主市场(qatar)+泛海湾(general-gcc)」双轨生成，
-          // 其余 5 国只生成地域寻源篇（gcc-regional-sourcing），其正文由国家级真实数据
-          // （港口、监管机构、工业集群、文化商务要点）驱动，与其他国家版本正文显著不同——
-          // 不再是同模板换国名的 doorway 形态。
-          const isPanGcc = gccCountry.code === 'general-gcc';
-          const isPrimary = gccCountry.code === 'qatar';
-          if (!isPrimary && !isPanGcc) {
-            // 非主市场：仅地域寻源两型
-            const regionalTypes = articleTypes.filter(t => t === 'gcc-regional-sourcing');
+        for (const jaRegion of jaRegions) {
+          // 反スケール化戦略：記事選題は「主市場(関東)+全国(general-jp)」の二軌で生成、
+          // 残り 5 地域は地域ソーシング篇（jp-regional-sourcing）のみ生成。
+          // その本文は地域別実データ（港湾、規格適合、工業クラスタ、商務要点）で駆動され
+          // 他地域版との本文が顕著に異なる——地域名だけ差し替えた doorway 形態ではない。
+          const isNationwide = jaRegion.code === 'general-jp';
+          const isPrimary = jaRegion.code === 'kanto';
+          if (!isPrimary && !isNationwide) {
+            // 非主市場：地域ソーシング 2 タイプのみ
+            const regionalTypes = articleTypes.filter(t => t === 'jp-regional-sourcing');
             for (const articleType of regionalTypes) {
-              allTopics.push(...generateTopicsForCombination(productFamily, model, industry, gccCountry, articleType));
+              allTopics.push(...generateTopicsForCombination(productFamily, model, industry, jaRegion, articleType));
             }
             continue;
           }
-          // 主市场/泛海湾：地域寻源篇在 general-gcc 不生成；泛海湾只保留核心信息型 6 类
-          let relevantTypes = isPanGcc
-            ? articleTypes.filter(t => t !== 'gcc-regional-sourcing')
+          // 主市場/全国：地域ソーシング篇は general-jp では生成しない
+          let relevantTypes = isNationwide
+            ? articleTypes.filter(t => t !== 'jp-regional-sourcing')
             : articleTypes;
-          if (isPanGcc) {
-            // general-gcc 保留全部非地域寻源类型（泛海湾视角与 qatar 主版标题/关键词不同轨，
-            // 且泛海湾篇面向 6 国汇总查询，意图可区分）
-          }
 
           for (const articleType of relevantTypes) {
-            const topics = generateTopicsForCombination(productFamily, model, industry, gccCountry, articleType);
+            const topics = generateTopicsForCombination(productFamily, model, industry, jaRegion, articleType);
             allTopics.push(...topics);
           }
         }
@@ -504,17 +506,17 @@ export function generateTopicMatrix(): TopicSpec[] {
     }
   }
 
-  // 去重
+  // 重複排除
   const deduped = deduplicateTopics(allTopics);
 
-  // 按优先级排序
+  // 優先度順にソート
   deduped.sort((a, b) => a.priority - b.priority || a.id.localeCompare(b.id));
 
   return deduped;
 }
 
 /**
- * 判断产品-行业-型号组合是否相关
+ * 製品-業界-型番組み合わせの関連性を判定
  */
 function isRelevantCombination(productFamily: string, industry: string, model: typeof models[0] | null): boolean {
   const relevanceMap: Record<string, string[]> = {
@@ -528,7 +530,7 @@ function isRelevantCombination(productFamily: string, industry: string, model: t
 }
 
 /**
- * 去重：同一 dedupeKey 只保留优先级最高的
+ * 重複排除：同一 dedupeKey は最優先度のみ保持
  */
 function deduplicateTopics(topics: TopicSpec[]): TopicSpec[] {
   const seen = new Map<string, TopicSpec>();
@@ -542,48 +544,48 @@ function deduplicateTopics(topics: TopicSpec[]): TopicSpec[] {
 }
 
 /**
- * 统计报告
+ * 統計レポート
  */
 export function printMatrixStats(topics: TopicSpec[]) {
-  console.log(`\n=== 选题矩阵统计 ===`);
-  console.log(`总计: ${topics.length} 篇`);
+  console.log(`\n=== 選題マトリクス統計 ===`);
+  console.log(`合計: ${topics.length} 本`);
 
   const byType = topics.reduce((acc, t) => {
     acc[t.articleType] = (acc[t.articleType] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
-  console.log('\n按类型:');
+  console.log('\nタイプ別:');
   Object.entries(byType).sort((a, b) => b[1] - a[1]).forEach(([k, v]) => console.log(`  ${k}: ${v}`));
 
   const byPriority = topics.reduce((acc, t) => {
     acc[t.priority] = (acc[t.priority] || 0) + 1;
     return acc;
   }, {} as Record<number, number>);
-  console.log('\n按优先级:');
+  console.log('\n優先度別:');
   Object.entries(byPriority).sort((a, b) => Number(a[0]) - Number(b[0])).forEach(([k, v]) => console.log(`  P${k}: ${v}`));
 
-  const byCountry = topics.reduce((acc, t) => {
-    acc[t.gccCountry] = (acc[t.gccCountry] || 0) + 1;
+  const byRegion = topics.reduce((acc, t) => {
+    acc[t.jaRegion] = (acc[t.jaRegion] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
-  console.log('\n按地区:');
-  Object.entries(byCountry).sort((a, b) => b[1] - a[1]).forEach(([k, v]) => console.log(`  ${k}: ${v}`));
+  console.log('\n地域別:');
+  Object.entries(byRegion).sort((a, b) => b[1] - a[1]).forEach(([k, v]) => console.log(`  ${k}: ${v}`));
 
   const byProduct = topics.reduce((acc, t) => {
     acc[t.productFamily] = (acc[t.productFamily] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
-  console.log('\n按产品族:');
+  console.log('\n製品ファミリー別:');
   Object.entries(byProduct).sort((a, b) => b[1] - a[1]).forEach(([k, v]) => console.log(`  ${k}: ${v}`));
 
   const byIndustry = topics.reduce((acc, t) => {
     acc[t.industry] = (acc[t.industry] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
-  console.log('\n按行业:');
+  console.log('\n業界別:');
   Object.entries(byIndustry).sort((a, b) => b[1] - a[1]).forEach(([k, v]) => console.log(`  ${k}: ${v}`));
 }
 
-// 导出单例
+// シングルトンエクスポート
 export const topicMatrix = generateTopicMatrix();
 printMatrixStats(topicMatrix);

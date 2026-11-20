@@ -32,7 +32,7 @@ const productJsonLd = {
   brand: { '@type': 'Brand', name: 'MoTai Abrasives' },
   category: model.family,
   additionalProperty: [
-    { '@type': 'PropertyValue', name: 'サイズ', value: model.sizeAr },
+    { '@type': 'PropertyValue', name: 'サイズ', value: model.sizeJa },
     { '@type': 'PropertyValue', name: '砥粒度', value: model.gritRange.join('、') },
     { '@type': 'PropertyValue', name: '基材タイプ', value: model.backing },
     { '@type': 'PropertyValue', name: '取付方式', value: model.attachment },
@@ -94,7 +94,7 @@ const faqJsonLd = {
             次に被削材の特性と要求される仕上げ結果に基づいてグレードを決定します。
           </p>
           <ul class="check-list check-list--large">
-            <li>サイズ：<strong>{model.sizeAr}</strong></li>
+            <li>サイズ：<strong>{model.sizeJa}</strong></li>
             <li>基材タイプ：{model.backing}</li>
             <li>取付方式：{model.attachment}</li>
           </ul>
@@ -115,7 +115,7 @@ const faqJsonLd = {
               <caption>{model.name}の参考仕様サマリー。最終仕様は購入者と確認します。</caption>
               <thead><tr><th>項目</th><th>説明</th></tr></thead>
               <tbody>
-                <tr><th scope="row">サイズ</th><td>{model.sizeAr}</td></tr>
+                <tr><th scope="row">サイズ</th><td>{model.sizeJa}</td></tr>
                 <tr><th scope="row">砥粒級</th><td>{model.gritRange.join('、')}</td></tr>
                 <tr><th scope="row">基材タイプ</th><td>{model.backing}</td></tr>
                 <tr><th scope="row">取付方式</th><td>{model.attachment}</td></tr>
@@ -150,7 +150,7 @@ const faqJsonLd = {
         <div class="sidebar-card">
           <h3>注文に役立つ情報</h3>
           <ul class="check-list">
-            <li>サイズ：{model.sizeAr}</li>
+            <li>サイズ：{model.sizeJa}</li>
             <li>要求グレード</li>
             <li>数量と再注文頻度</li>
             <li>発送先</li>

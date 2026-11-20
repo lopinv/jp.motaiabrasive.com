@@ -116,14 +116,14 @@ export function updateIndex(newEntries: Array<Record<string, any>>): number {
 /**
  * 计算"尚未发布的幸存选题"（peek 与 publish 共用，单一事实源）。
  * 幸存判定与 delete-duplicate-articles.mjs 一致：
- *   - gcc-regional-sourcing 全部幸存（正文国家级数据驱动）
- *   - 非地域篇：3D cell(model|cat|industry) 保留最小国家 rank 的主国家版
- *   - 4D cell(上+country) 内若已写过更小 variant，则本条不再幸存
+ *   - jp-regional-sourcing 全部幸存（正文地域级数据驱动）
+ *   - 非地域篇：3D cell(model|cat|industry) 保留最小程序 rank 的主地域版
+ *   - 4D cell(上+region) 内若已写过更小 variant，则本条不再幸存
  * 再过滤掉 _index.json 已收录的 slug（已发布/已物理存在的）。
  */
 export function remainingTopics(): TopicSpec[] {
-  const isRegional = (t: TopicSpec) => t.articleType === 'gcc-regional-sourcing';
-  const countryRank = (c: string) => ({ qatar: 0, 'saudi-arabia': 1, uae: 2, 'general-gcc': 9 }[c] ?? 99);
+  const isRegional = (t: TopicSpec) => t.articleType === 'jp-regional-sourcing';
+  const regionRank = (c: string) => ({ kanto: 0, kansai: 1, tohoku: 2, chubu: 3, chugoku: 4, kyushu: 5, 'general-jp': 9 }[c] ?? 99);
   const variantOf = (t: TopicSpec) => Number(t.slug.match(/-(\d+)$/)?.[1] ?? 0);
   const cellKey = (t: TopicSpec) => `${t.productModel}|${t.articleType}|${t.industry}`;
 
@@ -131,7 +131,7 @@ export function remainingTopics(): TopicSpec[] {
   for (const t of topicMatrix) {
     if (isRegional(t)) continue;
     const k = cellKey(t);
-    const r = countryRank(t.gccCountry);
+    const r = regionRank(t.jaRegion);
     minCountryRank.set(k, Math.min(minCountryRank.get(k) ?? 99, r));
   }
 
@@ -145,7 +145,7 @@ export function remainingTopics(): TopicSpec[] {
   for (const slug of existing) {
     const t = topicMatrix.find((x) => sanitizeSlug(x.slug) === slug);
     if (!t) continue;
-    const k4 = `${cellKey(t)}|${t.gccCountry}`;
+    const k4 = `${cellKey(t)}|${t.jaRegion}`;
     written4d.add(k4);
     const v = variantOf(t);
     minVariant.set(k4, Math.min(minVariant.get(k4) ?? 99, v));
@@ -153,8 +153,8 @@ export function remainingTopics(): TopicSpec[] {
 
   const survivors = topicMatrix.filter((t) => {
     if (isRegional(t)) return true;
-    if (countryRank(t.gccCountry) !== minCountryRank.get(cellKey(t))) return false;
-    const k4 = `${cellKey(t)}|${t.gccCountry}`;
+    if (regionRank(t.jaRegion) !== minCountryRank.get(cellKey(t))) return false;
+    const k4 = `${cellKey(t)}|${t.jaRegion}`;
     // 4D cell 已写过更小 variant 时，本条不再是幸存（避免同 cell 近似复制）
     return !written4d.has(k4) || variantOf(t) < minVariant.get(k4);
   });
@@ -180,7 +180,7 @@ export function writePublishBatch(): { slug: string; filePath: string } | null {
     articleType: next.articleType,
     productFamily: next.productFamily,
     industry: next.industry,
-    gccCountry: next.gccCountry,
+    jaRegion: next.jaRegion,
     priority: next.priority,
     primaryKeyword: next.primaryKeyword,
   }]);
@@ -250,7 +250,7 @@ async function main() {
     articleType: t.articleType,
     productFamily: t.productFamily,
     industry: t.industry,
-    gccCountry: t.gccCountry,
+    jaRegion: t.jaRegion,
     priority: t.priority,
     primaryKeyword: t.primaryKeyword,
   })));

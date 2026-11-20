@@ -6,7 +6,7 @@ const flapDiscsTopics = topicMatrix.filter((t, i) => t.productFamily === 'flap-d
 console.log(`Total flap-discs topics: ${flapDiscsTopics.length}`);
 console.log('First 10 flap-discs topics:');
 flapDiscsTopics.slice(0, 10).forEach((t, idx) => {
-  console.log(`  [${topicMatrix.indexOf(t)}] ${t.title} | ${t.industry} | ${t.gccCountry} | ${t.articleType}`);
+  console.log(`  [${topicMatrix.indexOf(t)}] ${t.title} | ${t.industry} | ${t.jaRegion} | ${t.articleType}`);
 });
 
 // Test generating all flap-discs

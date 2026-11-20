@@ -31,7 +31,7 @@ const organization = {
   '@type': 'Organization',
   '@id': `${SITE.url}/#organization`,
   name: SITE.legalName,
-  alternateName: SITE.nameAr,
+  alternateName: SITE.nameJa,
   url: SITE.url,
   email: SITE.email,
   telephone: SITE.phone,
@@ -57,7 +57,7 @@ const website = {
   '@type': 'WebSite',
   '@id': `${SITE.url}/#website`,
   url: SITE.url,
-  name: SITE.nameAr,
+  name: SITE.nameJa,
   description: '墨泰研磨材工場の公式ウェブサイト、産業用購入者向け。',
   inLanguage: 'ja',
   publisher: { '@id': `${SITE.url}/#organization` },
@@ -96,7 +96,7 @@ const graph = [organization, website, breadcrumbSchema, ...jsonLd].filter(Boolea
 
     <meta property="og:locale" content="ja_JP" />
     <meta property="og:type" content={type} />
-    <meta property="og:site_name" content={SITE.nameAr} />
+    <meta property="og:site_name" content={SITE.nameJa} />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonical} />
@@ -134,6 +134,15 @@ const graph = [organization, website, breadcrumbSchema, ...jsonLd].filter(Boolea
     </noscript>
     <script type="application/ld+json" set:html={JSON.stringify(graph)} />
     <slot name="head" />
+
+    <!-- Google Analytics (gtag) -->
+    <script async src="https://www.googletagmanager.com/gtm.js?id=G-SLN397942Q"></script>
+    <script is:inline>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-SLN397942Q');
+    </script>
   </head>
   <body>
     <a class="skip-link" href="#main">メインコンテンツへスキップ</a>

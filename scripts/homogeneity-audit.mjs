@@ -62,7 +62,7 @@ for (const f of files) {
     category: fm.category || '',
     model: fm.productModel || '',
     industry: fm.industry || '',
-    country: fm.gccCountry || '',
+    country: fm.jaRegion || '',
     dedupeKey: (fm.notes || '').match(/DedupeKey:\s*([\w|-]+)/)?.[1] || '',
     noindex: fm.noindex === true,
     body: bodyText(text),
@@ -94,11 +94,12 @@ console.log(`唯一标题: ${byTitle.size} / ${n}`);
 console.log(`完全重复标题组: ${dupTitles.length} 组, 涉及 ${dupTitles.reduce((s, [, c]) => s + c, 0)} 篇`);
 dupTitles.slice(0, 5).forEach(([t, c]) => console.log(`  ×${c}  ${t.slice(0, 70)}`));
 
-// 2) 去国家/产品词后的"骨架标题"重复度（模板痕迹）
+// 2) 去地域/产品词后的"骨架标题"重复度（模板痕迹）
 function skeletonTitle(t) {
   return t
-    .replace(/[٠-٩]+\s*×\s*[٠-٩]+\s*(مم|mm|انچ|inch|إ)/gi, 'SIZE')
-    .replace(/لـ?\s*[^\s:]{2,40}/g, 'X') // "لـ 行业" 尾巴
+    .replace(/\d+\s*[×x]\s*\d+\s*(mm|ミリ|インチ|inch)/gi, 'SIZE')
+    .replace(/[（(][^（）()]*[）)]/g, '') // 去掉（地域/括注）
+    .replace(/(の|向け)/g, '') // 日文「の／向け」连接尾巴
     .trim();
 }
 const bySkel = new Map();
