@@ -3,7 +3,7 @@ import sitemap from '@astrojs/sitemap';
 import mdx from '@astrojs/mdx';
 
 export default defineConfig({
-  site: 'https://ar.motaiabrasive.com',
+  site: 'https://jp.motaiabrasive.com',
   trailingSlash: 'never',
   build: {
     format: 'directory',

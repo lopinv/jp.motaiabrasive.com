@@ -71,8 +71,8 @@ for (const [target, sources] of internal) {
 
 // 站外可达性：本站 canonical（Pages 上线前域名未解析）、wa.me / 社交平台 / formsubmit 跳过
 const allExt = [...external].sort();
-const selfUrls = allExt.filter((u) => new URL(u).host === 'ar.motaiabrasive.com');
-const rest = allExt.filter((u) => new URL(u).host !== 'ar.motaiabrasive.com');
+const selfUrls = allExt.filter((u) => new URL(u).host === 'jp.motaiabrasive.com');
+const rest = allExt.filter((u) => new URL(u).host !== 'jp.motaiabrasive.com');
 const headable = rest.filter((u) => {
   const url = new URL(u);
   return url.pathname !== '/' && !/wa\.me|facebook\.com|instagram\.com|formsubmit\.co/.test(url.host);
@@ -104,7 +104,7 @@ for (const page of htmlFiles) {
     const tag = m[0];
     const href = (tag.match(/href="([^"]+)"/) || [])[1];
     if (!href || !/^https?:\/\//i.test(href)) continue;
-    if (new URL(href).host === 'ar.motaiabrasive.com') continue; // 本站 canonical 链接
+    if (new URL(href).host === 'jp.motaiabrasive.com') continue; // 本站 canonical 链接
     if (!/nofollow/.test(tag)) {
       nofollowMissing++;
       console.log(`✖ ${from}: 外链缺 nofollow → ${href}`);

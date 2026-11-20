@@ -164,7 +164,7 @@ function buildFrontmatter(
     secondaryKeywords: topic.secondaryKeywords,
     longTailKeywords: topic.longTailKeywords,
     searchIntent: topic.searchIntent,
-    featuredImage: model?.image ? `https://ar.motaiabrasive.com${model.image}` : productCat?.image ? `https://ar.motaiabrasive.com${productCat.image}` : undefined,
+    featuredImage: model?.image ? `https://jp.motaiabrasive.com${model.image}` : productCat?.image ? `https://jp.motaiabrasive.com${productCat.image}` : undefined,
     featuredImageAlt: model?.imageAlt || productCat?.name,
     internalLinks,
     externalLinks,

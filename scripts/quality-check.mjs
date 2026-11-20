@@ -3,7 +3,7 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 
 const distDir = path.resolve('dist');
-const origin = 'https://ar.motaiabrasive.com';
+const origin = 'https://jp.motaiabrasive.com';
 const errors = [];
 const warnings = [];
 

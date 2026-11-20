@@ -2,7 +2,7 @@ export const SITE = {
   name: 'MoTai Abrasives',
   nameAr: '墨泰研磨材',
   legalName: 'Hubei MoTai Abrasives Materials Co., Ltd.',
-  url: 'https://ar.motaiabrasive.com',
+  url: 'https://jp.motaiabrasive.com',
   locale: 'ja',
   email: 'motai-01@motaiabrasive.com',
   whatsapp: '8618118635597',
