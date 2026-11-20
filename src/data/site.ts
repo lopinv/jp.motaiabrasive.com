@@ -2,7 +2,7 @@ export const SITE = {
   name: 'MoTai Abrasives',
   nameAr: '墨泰研磨材',
   legalName: 'Hubei MoTai Abrasives Materials Co., Ltd.',
-  url: 'https://jp.motaiabrasive.com',
+  url: 'https://ar.motaiabrasive.com',
   locale: 'ja',
   email: 'motai-01@motaiabrasive.com',
   whatsapp: '8618118635597',
@@ -339,16 +339,16 @@ export const industries = [
  * 実際のウェブサイト内製品ページのみにリンク。
  */
 export const applicationScenes = [
-  { title: '産業用金属仕上げ', image: 'https://www.motaiabrasive.com/cdn/shop/files/motai-application-metal-real-1600.jpg?width=900', href: '/products/flap-discs' },
-  { title: '木材板材研磨', image: 'https://www.motaiabrasive.com/cdn/shop/files/motai-application-wood-real-1600.jpg?width=900', href: '/products/sanding-discs' },
-  { title: '自動車表面準備', image: 'https://www.motaiabrasive.com/cdn/shop/files/motai-application-auto-real-1600.jpg?width=900', href: '/products/sanding-discs' },
-  { title: '金属部品仕上げ', image: 'https://www.motaiabrasive.com/cdn/shop/files/motai-application-stainless-real-1600.jpg?width=900', href: '/products' },
-  { title: '海洋産業の錆除去', image: 'https://www.motaiabrasive.com/cdn/shop/files/motai-application-marine-real-1600.jpg?width=900', href: '/products/flap-discs' },
-  { title: '金属切削とバリ取り', image: 'https://www.motaiabrasive.com/cdn/shop/files/motai-application-surface-real-1600.jpg?width=900', href: '/products/abrasive-belts' },
-  { title: '家具と曲面', image: 'https://www.motaiabrasive.com/cdn/shop/files/motai-application-furniture-real-1600.jpg?width=900', href: '/products/sanding-sponges' },
-  { title: '壁面と石膏ボード研磨', image: 'https://www.motaiabrasive.com/cdn/shop/files/motai-application-drywall-real-1600.jpg?width=900', href: '/products/sanding-discs' },
-  { title: 'ジュエリーと精密部品', image: 'https://www.motaiabrasive.com/cdn/shop/files/motai-application-precision-real-1600.jpg?width=900', href: '/products/models/psa-disc-3-inch' },
-  { title: '手作業とクラフト研磨', image: 'https://www.motaiabrasive.com/cdn/shop/files/motai-application-hand-real-1600.jpg?width=900', href: '/products/sanding-sponges' },
+  { title: '産業用金属仕上げ', image: 'https://www.motaiabrasive.com/cdn/shop/files/motai-application-metal-real-1600.jpg?v=1794206413&width=1600', href: '/products/flap-discs' },
+  { title: '木材板材研磨', image: 'https://www.motaiabrasive.com/cdn/shop/files/motai-application-wood-real-1600.jpg?v=1794206426&width=1600', href: '/products/sanding-discs' },
+  { title: '自動車表面準備', image: 'https://www.motaiabrasive.com/cdn/shop/files/motai-application-auto-real-1600.jpg?v=1794206438&width=1600', href: '/products/sanding-discs' },
+  { title: '金属部品仕上げ', image: 'https://www.motaiabrasive.com/cdn/shop/files/motai-application-stainless-real-1600.jpg?v=1794206469&width=1600', href: '/products' },
+  { title: '海洋産業の錆除去', image: 'https://www.motaiabrasive.com/cdn/shop/files/motai-application-marine-real-1600.jpg?v=1794206481&width=1600', href: '/products/flap-discs' },
+  { title: '金属切削とバリ取り', image: 'https://www.motaiabrasive.com/cdn/shop/files/motai-application-surface-real-1600.jpg?v=1794206493&width=1600', href: '/products/abrasive-belts' },
+  { title: '家具と曲面', image: 'https://www.motaiabrasive.com/cdn/shop/files/motai-application-furniture-real-1600.jpg?v=1794206529&width=1600', href: '/products/sanding-sponges' },
+  { title: '壁面と石膏ボード研磨', image: 'https://www.motaiabrasive.com/cdn/shop/files/motai-application-drywall-real-1600.jpg?v=1794206539&width=1600', href: '/products/sanding-discs' },
+  { title: 'ジュエリーと精密部品', image: 'https://www.motaiabrasive.com/cdn/shop/files/motai-application-precision-real-1600.jpg?v=1794206552&width=1600', href: '/products/models/psa-disc-3-inch' },
+  { title: '手作業とクラフト研磨', image: 'https://www.motaiabrasive.com/cdn/shop/files/motai-application-hand-real-1600.jpg?v=1794206564&width=1600', href: '/products/sanding-sponges' },
 ] as const;
 
 /**
