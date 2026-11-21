@@ -8,6 +8,8 @@ Hubei MoTai Abrasives Materials Co., Ltd. 的日语企业级工业 B2B 站点。
 
 站点在构建时会自动校验 SEO 元数据、JSON-LD 结构、页面内容厚度、内部链接图与 Sitemap 完整性，防止出现薄内容页与孤岛页面。
 
+文章库为 **300 篇手写日语 B2B 技术文章**（`src/content/articles/*.mdx`，已入库）：选题由 `src/content/manifest.ts` + `manifest-topics.ts` 的覆盖清单驱动（全 31 型号 × 7 行业 × 7 地域 × 13 文章类型 × B2B 服务全覆盖），正文按 `AUTHORING_CONTRACT.md` 契约逐篇手写（事实仅取自 `models.ts`/`site.ts`/`glossary.ts`，禁脚本堆词、禁模板化），发布前经同质化门禁、SEO 质量门禁与链接门禁三道校验。
+
 ## 技术栈
 
 - [Astro](https://astro.build/) 7.x — 静态站点生成（`@astrojs/mdx` + `@astrojs/sitemap`）
@@ -31,9 +33,19 @@ npm run preview              # 本地预览构建产物
 npm run check               # Astro 类型检查 + SEO/内容/内链检查
 npm run check:site          # 同质化门禁 + SEO/内容/内链检查（需先 build）
 npm run check:links         # 全链路内链真实 HTTP GET 校验（需先 astro preview）
-npm run check:homogeneity  # 内容同质化审计（非门禁）
+npm run check:homogeneity   # 内容同质化审计（非门禁）
 npm run dedupe:delete       # 预览将删除的重复地域版/变体（dry-run）
 npm run dedupe:delete:execute # 实际执行删除并同步 _index.json
+
+# 文章库维护（非 npm script，直接 node 执行）
+node scripts/articles-verify.mjs   # 300 篇全量自检：文件齐全 / YAML / 内链白名单 / 唯一性 / 「墨泰」错字护栏
+node scripts/manifest-audit.mjs    # manifest 覆盖与去重校验（需 tsx 加载 .ts：见下）
+```
+
+manifest-audit 导入 `.ts` 模块，需经 tsx 执行（本机 node 不在 PATH 时经 mise shims）：
+
+```bash
+npx tsx scripts/manifest-audit.mjs
 ```
 
 ## 目录结构
@@ -47,9 +59,15 @@ src/
 │   └── glossary.ts # 行业术语表
 ├── layouts/      # BaseLayout（元数据/JSON-LD）与 Layout（页面骨架）
 ├── pages/        # 全部静态路由（见下表）
-├── content/      # MDX 文章集合（build 时由模板生成，不入库）
+├── content/
+│   ├── articles/        # 300 篇手写 MDX 技术文章（已入库，见 AUTHORING_CONTRACT.md）
+│   ├── manifest.ts      # 文章覆盖清单（31 型号 / 7 行业 / 7 地域 / 13 类型常量）
+│   ├── manifest-topics.ts # 300 篇选题计划（slug/title/angle，生成 _topics.json 的单一事实源）
+│   ├── _topics.json     # 选题计划快照（供撰写与 articles-verify 校验）
+│   └── _models.json     # 型号 slug 快照（供内链白名单校验）
 ├── styles/       # 设计令牌、组件样式、页面样式、文章正文样式
-└── templates/    # 批量文章生成模板（选题矩阵、13 类文章模板、MDX 生成器）
+└── templates/    # 增量文章生成管线（选题矩阵、13 类文章模板、MDX 生成器，供 publish-cycle 逐篇增发）
+AUTHORING_CONTRACT.md    # 手写文章契约：frontmatter 模式 / 正文 HTML 规则 / 内链白名单 / 事实来源 / 反模板化
 public/
 ├── images/       # 公开产品与工厂图片
 ├── favicon.svg
@@ -63,7 +81,9 @@ scripts/
 ├── audit-urls.mjs           # 构建产物全量 URL 审计（站内文件存在性 + 站外可达性 + mailto/tel 格式）
 ├── check-all-links.mjs      # 全链路内链真实 HTTP GET 200 校验（需先 astro preview）
 ├── link-density.mjs        # 内链密度统计（每页本地 <a href> 数量分布，不请求）
-├── homogeneity-audit.mjs    # 内容同质化审计（标题/描述/DedupeKey/正文 Jaccard）
+├── homogeneity-audit.mjs    # 内容同质化审计（标题/描述/DedupeKey/正文 Jaccard；--gate 门禁模式）
+├── articles-verify.mjs      # 300 篇全量自检：文件齐全 / YAML 可解析 / 内链白名单 / 标题描述唯一 / 「墨泰」错字护栏
+├── manifest-audit.mjs       # manifest 覆盖与去重校验（件数 / slug / title / cell / 型号·行业·地域·类型网罗）
 ├── generate-articles.ts     # 批量生成文章（写入 src/content/articles/*.mdx + _index.json）
 ├── publish-next.ts         # 发布循环单步：生成下一篇「幸存」选题（逐篇发布，规避 scaled content abuse）
 ├── publish-cycle.mjs        # 发布编排器：peek 选题→生成→build→三层门禁→提交→gh-pages worktree 部署
@@ -89,7 +109,7 @@ check_keywords.mjs           # 根目录 ad-hoc 调试脚本：抽检前 10 篇 
 | 技术规格 | `/technical-specs` | FEPA grit 表、英寸/毫米换算、磨料/基体类型 |
 | 物流与 OEM | `/shipping-oem` | 海运/空运步骤、OEM 流程、包装选项、FAQ |
 | 资源中心 | `/resources`、`/resources/[slug]` | 技术指南与采购准备清单 |
-| 文章 | `/articles`、`/articles/[slug]` | MDX 技术文章（build 时由模板生成） |
+| 文章 | `/articles`、`/articles/[slug]` | MDX 技术文章：现有 300 篇手写文章（manifest 驱动，见 `AUTHORING_CONTRACT.md`）；`scripts/templates` 增量管线可逐篇增发 |
 | 转化 | `/quote`、`/contact`、`/thankyou` | 分步询价表单、WhatsApp、邮箱、电话 |
 | 合规 | `/privacy` | 数据收集、使用、保留与权利说明 |
 | 404 | `/404` | 未找到页面（`src/pages/404.astro`），提供导航与返回 |
@@ -113,7 +133,9 @@ WhatsApp 号码为 `+86 181 1863 5597`（来自企业官网公开信息），统
 
 ## 部署到 GitHub Pages
 
-仓库**不含** `.github/workflows/` 工作流；发布由 `scripts/publish-cycle.mjs` 编排（供定时任务调用，默认每 30 分钟一篇）：
+**双推模型**：`main` 存源码（含 `src/content/articles/` 300 篇手写文章），`gh-pages` 存构建产物。发布流程为 `astro build` 后用独立 worktree（`.ghpages-worktree`）全量同步 `dist/`（保留 `CNAME`/`.nojekyll`）提交并推送 `gh-pages`。
+
+仓库**不含** `.github/workflows/` 工作流；**增量**文章（300 篇之外）由 `scripts/publish-cycle.mjs` 编排（供定时任务调用，默认每 30 分钟一篇）：
 
 1. peek 选题池（`generate-articles.remainingTopics()` 单一事实源）；耗尽则打印 `PUBLISH_EXHAUSTED` 并 `exit 0`。
 2. 生成下一篇「幸存」选题（`publish-next.ts`，落盘 1 篇 mdx + `_index.json`）。
