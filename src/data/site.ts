@@ -63,7 +63,7 @@ export const productCategories = [
     title: '効率的な金属クリーニングと仕上げのためのフラップディスク',
     description:
       '両面異なるフラップディスクは、研削と仕上げをバランスよく組み合わせます。設備メンテナンス、錆除去、塗装前や組立前のエッジ準備に適しており、砥粒と基材、被削材、加工負荷を考慮して選定します。',
-    image: '/images/flap-disc.jpg',
+    image: 'https://www.motaiabrasive.com/cdn/shop/files/motai-flap-plastic-reddish-brown-display.png?v=1794206501&width=1600',
     applications: ['設備メンテナンス', '錆除去', '塗装前の表面処理'],
     specs: [
       ['標準直径', '115 mm, 125 mm, 180 mm, 180/230 mm'],
